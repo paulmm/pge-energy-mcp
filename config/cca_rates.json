@@ -1,0 +1,83 @@
+{
+  "_meta": {
+    "last_updated": "2026-03-21",
+    "notes": "CCA generation rates by provider and schedule. These replace the PG&E generation component for CCA customers. Effective rate = PG&E delivery + CCA generation + PCIA vintage."
+  },
+  "providers": {
+    "PCE": {
+      "name": "Peninsula Clean Energy",
+      "territory": "San Mateo County + Los Banos",
+      "website": "peninsulacleanenergy.com",
+      "phone": "866-966-0110",
+      "default_vintage": 2016,
+      "schedules": {
+        "EV2-A": {
+          "summer": {"peak": 0.12291, "partial_peak": 0.08267, "off_peak": 0.04565},
+          "winter": {"peak": 0.07173, "partial_peak": 0.06049, "off_peak": 0.03936}
+        },
+        "E-ELEC": {
+          "summer": {"peak": 0.13500, "partial_peak": 0.09800, "off_peak": 0.07593},
+          "winter": {"peak": 0.04422, "partial_peak": 0.02624, "off_peak": 0.01423},
+          "_notes": "Winter rates updated from Feb 2026 bill (new lower rates effective ~Feb 1 2026). Summer rates approximate — verify against PCE rate sheet. Previous winter rates were peak $0.10592, part $0.08795, off $0.07593."
+        },
+        "E-ELEC_pre_feb2026": {
+          "winter": {"peak": 0.10592, "partial_peak": 0.08795, "off_peak": 0.07593},
+          "_notes": "Historical rates prior to Feb 2026 reduction. Useful for validating against older bills."
+        },
+        "E-TOU-C": {
+          "summer": {"peak": 0.11000, "off_peak": 0.05500},
+          "winter": {"peak": 0.06500, "off_peak": 0.04000},
+          "_notes": "Estimated from EV2-A pattern (two-period, same peak hours). Verify against PCE rate sheet."
+        },
+        "E-TOU-D": {
+          "summer": {"peak": 0.10000, "off_peak": 0.05500},
+          "winter": {"peak": 0.06500, "off_peak": 0.04000},
+          "_notes": "Estimated. E-TOU-D has narrower peak (5-8PM weekdays). Verify against PCE rate sheet."
+        }
+      }
+    },
+    "SVCE": {
+      "name": "Silicon Valley Clean Energy",
+      "territory": "Santa Clara County cities",
+      "website": "svcleanenergy.org",
+      "default_vintage": 2017,
+      "schedules": {
+        "_notes": "Rates TBD — pull from svcleanenergy.org/rates"
+      }
+    },
+    "MCE": {
+      "name": "MCE (formerly Marin Clean Energy)",
+      "territory": "Marin, Napa, Contra Costa, Solano counties",
+      "website": "mcecleanenergy.org",
+      "default_vintage": 2010,
+      "schedules": {
+        "_notes": "Rates TBD — pull from mcecleanenergy.org/ev-rates"
+      }
+    },
+    "SJCE": {
+      "name": "San José Clean Energy",
+      "territory": "City of San José",
+      "website": "sanjosecleanenergy.org",
+      "default_vintage": 2019,
+      "schedules": {
+        "_notes": "Rates TBD"
+      }
+    },
+    "EBCE": {
+      "name": "East Bay Community Energy",
+      "territory": "Alameda County",
+      "website": "ebce.org",
+      "default_vintage": 2018,
+      "schedules": {
+        "_notes": "Rates TBD"
+      }
+    },
+    "PGE_BUNDLED": {
+      "name": "PG&E Bundled Service",
+      "territory": "All PG&E territory",
+      "schedules": {
+        "_notes": "For bundled customers, use the 'generation' component from pge_rates.json directly. No PCIA applies."
+      }
+    }
+  }
+}

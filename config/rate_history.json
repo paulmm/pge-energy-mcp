@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "notes": "Historical rate periods. Each period defines overrides for PG&E delivery and/or CCA generation rates that apply before a given date. The rate engine uses the most recent period that starts on or before the interval date. Rates in pge_rates.json and cca_rates.json are the CURRENT (latest) rates."
+  },
+  "periods": [
+    {
+      "label": "Pre-March 2026 (old BSC structure, higher per-kWh)",
+      "applies_before": "2026-03-01",
+      "pge_delivery_overrides": {
+        "E-ELEC": {
+          "summer": {"peak": 0.42500, "partial_peak": 0.33000, "off_peak": 0.29500},
+          "winter": {"peak": 0.34756, "partial_peak": 0.32547, "off_peak": 0.31161},
+          "_notes": "Winter rates from actual bill data. Summer estimated from pre-March tariff (higher per-kWh, lower BSC)."
+        },
+        "EV2-A": {
+          "summer": {"peak": 0.39500, "partial_peak": 0.33000, "off_peak": 0.17000},
+          "winter": {"peak": 0.32500, "partial_peak": 0.32000, "off_peak": 0.17500},
+          "_notes": "Estimated pre-March EV2-A delivery. March 2026 restructure dropped per-kWh ~$0.05-0.07 and raised BSC from ~$0.49 to ~$0.79/day."
+        }
+      },
+      "bsc_overrides": {
+        "E-ELEC": {"tier_3_standard": 0.49281},
+        "EV2-A": {"tier_3_standard": 0.49281}
+      }
+    },
+    {
+      "label": "Pre-Feb 2026 PCE E-ELEC generation rate drop",
+      "applies_before": "2026-02-01",
+      "cca_generation_overrides": {
+        "PCE": {
+          "E-ELEC": {
+            "winter": {"peak": 0.10592, "partial_peak": 0.08795, "off_peak": 0.07593},
+            "_notes": "PCE dropped E-ELEC generation rates significantly Feb 2026."
+          }
+        }
+      }
+    }
+  ]
+}

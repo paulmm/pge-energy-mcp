@@ -1,0 +1,27 @@
+{
+  "_meta": {
+    "source": "PG&E Tariff Book EV2 Sheet 5, PUC Sheet 61173-E",
+    "effective": "2026-03-01",
+    "notes": "Vintaged Power Charge Indifference Adjustment. Applies per-kWh to all CCA/DA customers. Vintage year = year customer first joined CCA. Negative values = credit."
+  },
+  "vintages": {
+    "2009": 0.02973,
+    "2010": 0.03366,
+    "2011": 0.03492,
+    "2012": 0.03676,
+    "2013": 0.03708,
+    "2014": 0.03686,
+    "2015": 0.03680,
+    "2016": 0.03687,
+    "2017": 0.03661,
+    "2018": 0.03679,
+    "2019": 0.03725,
+    "2020": 0.03632,
+    "2021": 0.05264,
+    "2022": 0.05272,
+    "2023": 0.05380,
+    "2024": 0.05066,
+    "2025": -0.01011,
+    "2026": -0.01011
+  }
+}
