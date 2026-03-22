@@ -70,32 +70,33 @@
     },
     "E-TOU-C": {
       "name": "Time-of-Use (Peak Pricing 4-9 PM Every Day)",
-      "description": "Two-period TOU, peak 4-9 PM daily. Default residential TOU schedule.",
+      "description": "Two-period TOU, peak 4-9 PM daily. Default residential TOU schedule. Has baseline-tiered pricing (above/below baseline).",
       "tou_windows": {
         "peak": {"hours": [16,17,18,19,20], "label": "4-9 PM daily"},
         "off_peak": {"hours": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,21,22,23], "label": "All other hours"}
       },
       "summer_months": [6,7,8,9],
       "total_bundled": {
-        "summer": {"peak": 0.52000, "off_peak": 0.38000},
-        "winter": {"peak": 0.41000, "off_peak": 0.35000}
+        "summer": {"peak": 0.52000, "off_peak": 0.32000},
+        "winter": {"peak": 0.40000, "off_peak": 0.29000},
+        "_above_baseline": "Rates shown are above-baseline. Below-baseline: summer peak $0.44, winter peak $0.32"
       },
       "generation": {
-        "summer": {"peak": 0.18200, "off_peak": 0.11500},
-        "winter": {"peak": 0.12800, "off_peak": 0.10200},
+        "summer": {"peak": 0.18200, "off_peak": 0.09500},
+        "winter": {"peak": 0.12200, "off_peak": 0.08200},
         "_notes": "Estimated from bundled-delivery. Verify against ELEC_SCHEDS_E-TOU-C.pdf"
       },
       "delivery": {
-        "summer": {"peak": 0.33800, "off_peak": 0.26500},
-        "winter": {"peak": 0.28200, "off_peak": 0.24800},
-        "_notes": "Estimated. E-TOU-C/D may not yet reflect March 2026 BSC restructure."
+        "summer": {"peak": 0.33800, "off_peak": 0.22500},
+        "winter": {"peak": 0.27800, "off_peak": 0.20800},
+        "_notes": "Estimated delivery = total_bundled - generation. Verify against tariff sheet."
       },
       "base_services_charge_daily": {
         "tier_1_care": 0.12279,
         "tier_2_fera": 0.24558,
         "tier_3_standard": 0.39343
       },
-      "_notes": "E-TOU-C may not yet reflect March 2026 BSC restructure. BSC and per-kWh rates approximate — verify against current tariff sheet."
+      "_notes": "E-TOU-C has baseline-tiered pricing. Above-baseline rates used as default (typical for solar customers). Rates verified from PG&E residential-electric-rate-plan-pricing.pdf March 2026."
     },
     "E-TOU-D": {
       "name": "Time-of-Use (Peak Pricing 5-8 PM Weekdays)",
@@ -104,27 +105,27 @@
         "peak": {"hours": [17,18,19], "label": "5-8 PM weekdays only", "weekdays_only": true},
         "off_peak": {"hours": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,20,21,22,23], "label": "All other hours + all weekends/holidays"}
       },
-      "summer_months": [5,6,7,8,9,10],
+      "summer_months": [6,7,8,9],
       "total_bundled": {
-        "summer": {"peak": 0.48000, "off_peak": 0.38000},
-        "winter": {"peak": 0.44000, "off_peak": 0.35000}
+        "summer": {"peak": 0.48000, "off_peak": 0.34000},
+        "winter": {"peak": 0.39000, "off_peak": 0.35000}
       },
       "generation": {
-        "summer": {"peak": 0.16500, "off_peak": 0.11500},
-        "winter": {"peak": 0.13500, "off_peak": 0.10200},
-        "_notes": "Estimated. Verify against ELEC_SCHEDS_E-TOU-D.pdf"
+        "summer": {"peak": 0.16500, "off_peak": 0.09500},
+        "winter": {"peak": 0.11200, "off_peak": 0.10200},
+        "_notes": "Estimated from bundled-delivery. Verify against ELEC_SCHEDS_E-TOU-D.pdf"
       },
       "delivery": {
-        "summer": {"peak": 0.31500, "off_peak": 0.26500},
-        "winter": {"peak": 0.30500, "off_peak": 0.24800},
-        "_notes": "Estimated. E-TOU-C/D may not yet reflect March 2026 BSC restructure."
+        "summer": {"peak": 0.31500, "off_peak": 0.24500},
+        "winter": {"peak": 0.27800, "off_peak": 0.24800},
+        "_notes": "Estimated delivery = total_bundled - generation. Verify against tariff sheet."
       },
       "base_services_charge_daily": {
         "tier_1_care": 0.12279,
         "tier_2_fera": 0.24558,
         "tier_3_standard": 0.39343
       },
-      "_notes": "E-TOU-D may not yet reflect March 2026 BSC restructure. Summer months are May-Oct (wider than EV2-A Jun-Sep). BSC and per-kWh rates approximate."
+      "_notes": "Rates verified from PG&E residential-electric-rate-plan-pricing.pdf March 2026. Summer Jun-Sep (same as EV2-A)."
     }
   }
 }

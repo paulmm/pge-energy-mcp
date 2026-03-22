@@ -108,14 +108,25 @@ Total Bundled:
 Base Services Charge: Same tiers as EV2-A.
 E-ELEC delivery rates from bills: Winter ~$0.348 peak, ~$0.326 partial, ~$0.312 off-peak (pre-March 2026). Post-March unbundled rates: verify from tariff sheet ELEC_SCHEDS_E-ELEC.pdf.
 
-### E-TOU-D (PUC Sheet 60715-E, Jan 1, 2026 — pre-BSC restructure)
+### E-TOU-D (March 1, 2026 — from PG&E residential rate plan pricing PDF)
 
-Peak 5-8PM weekdays only (no weekend/holiday peak). Summer May-Oct (differs from EV2-A).
-- Summer: Peak $0.53623, Off-Peak $0.40127
-- Winter: Peak $0.44662, Off-Peak $0.40801
-Delivery Minimum Bill: $0.40317/day. NOTE: Pre-March 2026 rates, may not include BSC restructure.
+Peak 5-8PM weekdays only (no weekend/holiday peak). Summer Jun-Sep (same as EV2-A).
 
-### E-TOU-C — TODO: fetch actual rates from ELEC_SCHEDS_E-TOU-C.pdf
+Total Bundled ($/kWh):
+- Summer: Peak $0.48, Off-Peak $0.34
+- Winter: Peak $0.39, Off-Peak $0.35
+
+### E-TOU-C (March 1, 2026 — from PG&E residential rate plan pricing PDF)
+
+Peak 4-9PM daily. Two-period (no partial peak). Has baseline-tiered pricing.
+
+Total Bundled ($/kWh, above baseline):
+- Summer: Peak $0.52, Off-Peak $0.32
+- Winter: Peak $0.40, Off-Peak $0.29
+
+Below baseline:
+- Summer: Peak $0.44
+- Winter: Peak $0.32
 
 ### PCE Generation Rates (Feb 2026)
 

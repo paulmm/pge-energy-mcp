@@ -162,7 +162,7 @@ class TestETOUDWeekdayOnly:
 
 
 class TestSeasonClassification:
-    """EV2-A summer = Jun-Sep (6-9). E-TOU-D summer = May-Oct (5-10)."""
+    """All schedules: summer = Jun-Sep (6-9)."""
 
     def test_ev2a_summer(self):
         _, season = classify_tou_period(12, 7, 0, schedule="EV2-A")
@@ -177,14 +177,15 @@ class TestSeasonClassification:
         _, season = classify_tou_period(12, 5, 0, schedule="EV2-A")
         assert season == "winter"
 
-    def test_etoud_may_is_summer(self):
-        """May is summer for E-TOU-D."""
+    def test_etoud_may_is_winter(self):
+        """May is winter for E-TOU-D (summer Jun-Sep per March 2026 PDF)."""
         _, season = classify_tou_period(12, 5, 0, schedule="E-TOU-D")
-        assert season == "summer"
+        assert season == "winter"
 
-    def test_etoud_october_is_summer(self):
+    def test_etoud_october_is_winter(self):
+        """October is winter for E-TOU-D (summer Jun-Sep per March 2026 PDF)."""
         _, season = classify_tou_period(12, 10, 0, schedule="E-TOU-D")
-        assert season == "summer"
+        assert season == "winter"
 
     def test_ev2a_october_is_winter(self):
         """October is winter for EV2-A (summer ends Sept)."""
