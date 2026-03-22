@@ -1,0 +1,105 @@
+<div class="summary-card">
+    <h3>Usage Profile</h3>
+    <div class="metric-cards">
+        <div class="metric-card">
+            <div class="value">{{ results.peak_exposure_pct }}%</div>
+            <div class="label">Peak Exposure</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">{{ results.partial_peak_exposure_pct }}%</div>
+            <div class="label">Partial Peak</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">{{ results.off_peak_pct }}%</div>
+            <div class="label">Off-Peak</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">{{ results.overnight_baseload_kwh_per_hr }} kWh/hr</div>
+            <div class="label">Overnight Baseload</div>
+        </div>
+    </div>
+</div>
+
+<div class="metric-cards">
+    <div class="metric-card">
+        <div class="value">{{ "{:,.0f}".format(results.total_import_kwh) }}</div>
+        <div class="label">Total Import (kWh)</div>
+    </div>
+    <div class="metric-card">
+        <div class="value">{{ "{:,.0f}".format(results.total_export_kwh) }}</div>
+        <div class="label">Total Export (kWh)</div>
+    </div>
+    <div class="metric-card">
+        <div class="value">{{ "{:,.0f}".format(results.net_consumption_kwh) }}</div>
+        <div class="label">Net Consumption (kWh)</div>
+    </div>
+</div>
+
+{% if results.seasonal_daily_averages %}
+<h3>Seasonal Comparison</h3>
+<div class="metric-cards">
+    {% for season, data in results.seasonal_daily_averages.items() %}
+    <div class="metric-card">
+        <div class="value">{{ data.avg_daily_import_kwh }} kWh/day</div>
+        <div class="label">{{ season|capitalize }} Avg Daily Import ({{ data.num_days }} days)</div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="metric-cards">
+    <div class="metric-card">
+        <div class="value">{{ results.weekday_avg_daily_kwh }} kWh/day</div>
+        <div class="label">Weekday Average</div>
+    </div>
+    <div class="metric-card">
+        <div class="value">{{ results.weekend_avg_daily_kwh }} kWh/day</div>
+        <div class="label">Weekend Average</div>
+    </div>
+</div>
+{% endif %}
+
+<h3>Monthly Trends</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Month</th>
+            <th>Import (kWh)</th>
+            <th>Export (kWh)</th>
+            <th>Avg Daily Import</th>
+            <th>Days</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for m in results.monthly_trends %}
+        <tr>
+            <td>{{ m.month }}</td>
+            <td>{{ "{:,.1f}".format(m.import_kwh) }}</td>
+            <td>{{ "{:,.1f}".format(m.export_kwh) }}</td>
+            <td>{{ m.avg_daily_import_kwh }} kWh/day</td>
+            <td>{{ m.num_days }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if results.top_import_days %}
+<h3>Top Import Days</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Rank</th>
+            <th>Date</th>
+            <th>Import (kWh)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for day in results.top_import_days %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ day.date }}</td>
+            <td>{{ "{:,.1f}".format(day.import_kwh) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}

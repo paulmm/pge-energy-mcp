@@ -1,0 +1,29 @@
+<div class="summary-card">
+    <h3>Data Parsed Successfully</h3>
+    <span class="data-badge">Data Loaded</span>
+
+    <div class="metric-cards">
+        <div class="metric-card">
+            <div class="value">{{ "{:,}".format(summary.num_intervals) }}</div>
+            <div class="label">Intervals</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">{{ "{:,.0f}".format(summary.total_import_kwh) }}</div>
+            <div class="label">Total Import (kWh)</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">{{ "{:,.0f}".format(summary.total_export_kwh) }}</div>
+            <div class="label">Total Export (kWh)</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">${{ "{:,.2f}".format(summary.total_cost) }}</div>
+            <div class="label">Total Billed Cost</div>
+        </div>
+    </div>
+
+    {% if summary.date_range %}
+    <p>Date range: {{ summary.date_range.start }} to {{ summary.date_range.end }}</p>
+    {% endif %}
+
+    <p>You can now <a href="/compare">compare plans</a>, view your <a href="/profile">usage profile</a>, or <a href="/trueup">project your true-up</a>.</p>
+</div>

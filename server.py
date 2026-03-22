@@ -428,5 +428,157 @@ async def optimize_battery(
                              nem_version, horizon_days)
 
 
+# ── PG&E Share My Data (Green Button Connect) Tools ─────────────────
+
+
+@mcp.tool()
+async def connect_pge(config_id: str) -> dict:
+    """
+    Start PG&E Share My Data OAuth connection to auto-fetch interval usage data.
+
+    Returns an authorization URL that the user opens in their browser to
+    authorize data sharing. After authorizing, use complete_pge_connection
+    with the code PG&E provides.
+
+    Args:
+        config_id: System config ID to associate the connection with
+
+    Returns:
+        Dict with auth_url, instructions, or error if not configured.
+    """
+    from src.integrations.pge_share_my_data import generate_auth_url
+    return generate_auth_url(config_id)
+
+
+@mcp.tool()
+async def complete_pge_connection(config_id: str, auth_code: str) -> dict:
+    """
+    Complete PG&E Share My Data connection by exchanging the authorization code.
+
+    After the user authorizes via the URL from connect_pge, they receive an
+    authorization code. This tool exchanges it for access+refresh tokens and
+    stores them for automatic data fetching.
+
+    Args:
+        config_id: System config ID (must match the one used in connect_pge)
+        auth_code: Authorization code from PG&E OAuth redirect
+
+    Returns:
+        Dict with connection status, subscription_id, or error details.
+    """
+    from src.integrations.pge_share_my_data import exchange_code
+
+    result = exchange_code(auth_code)
+    if "error" in result:
+        return result
+
+    # Store tokens
+    store = get_store()
+    store.save_oauth_token(config_id, "pge", {
+        "access_token": result["access_token"],
+        "refresh_token": result["refresh_token"],
+        "expires_in": result.get("expires_in", 3600),
+        "scope": result.get("scope", ""),
+        "subscription_id": result.get("subscription_id", ""),
+    })
+
+    return {
+        "status": "connected",
+        "config_id": config_id,
+        "subscription_id": result.get("subscription_id", ""),
+        "message": (
+            "PG&E account connected successfully. "
+            "Use fetch_pge_data to retrieve your interval usage data."
+        ),
+    }
+
+
+@mcp.tool()
+async def fetch_pge_data(config_id: str, start_date: str, end_date: str) -> dict:
+    """
+    Fetch PG&E interval usage data via Share My Data API.
+
+    Automatically uses stored OAuth tokens and refreshes them if expired.
+    Returns data in the same format as parse_green_button, so it works
+    directly with compare_plans, usage_profile, simulate_system, etc.
+
+    Args:
+        config_id: System config ID with stored PG&E connection
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+
+    Returns:
+        Dict with intervals, summary, metadata — same shape as parse_green_button.
+    """
+    from src.integrations.pge_share_my_data import fetch_usage_data, refresh_access_token
+
+    store = get_store()
+    token_data = store.get_oauth_token(config_id, "pge")
+
+    if token_data is None:
+        return {
+            "error": "not_connected",
+            "message": (
+                f"No PG&E connection found for config '{config_id}'. "
+                "Use connect_pge to start the authorization flow."
+            ),
+        }
+
+    access_token = token_data["access_token"]
+    subscription_id = token_data.get("subscription_id", "")
+
+    # Auto-refresh if expired
+    if store.is_token_expired(config_id, "pge"):
+        refresh_result = refresh_access_token(token_data["refresh_token"])
+        if "error" in refresh_result:
+            # If refresh fails, user needs to re-authorize
+            if refresh_result["error"] == "refresh_failed":
+                return {
+                    "error": "reauth_required",
+                    "message": (
+                        "PG&E token refresh failed. The connection may have been revoked. "
+                        "Use connect_pge to re-authorize."
+                    ),
+                    "detail": refresh_result.get("message", ""),
+                }
+            return refresh_result
+
+        # Update stored tokens
+        store.save_oauth_token(config_id, "pge", {
+            "access_token": refresh_result["access_token"],
+            "refresh_token": refresh_result.get("refresh_token", token_data["refresh_token"]),
+            "expires_in": refresh_result.get("expires_in", 3600),
+            "scope": token_data.get("scope", ""),
+            "subscription_id": subscription_id,
+        })
+        access_token = refresh_result["access_token"]
+
+    return fetch_usage_data(access_token, subscription_id, start_date, end_date)
+
+
+def create_combined_app():
+    """Create a combined ASGI app with both the MCP server and web interface.
+
+    The web app is mounted at /web, and the MCP server remains at the root.
+    """
+    from fastapi import FastAPI
+    from web.app import create_web_app
+
+    root = FastAPI(title="PG&E Energy MCP + Web")
+    web_app = create_web_app()
+    root.mount("/web", web_app)
+
+    return root
+
+
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+    import sys
+
+    if "--web" in sys.argv:
+        import uvicorn
+        from web.app import create_web_app
+
+        app = create_web_app()
+        uvicorn.run(app, host="0.0.0.0", port=8001)
+    else:
+        mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)

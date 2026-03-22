@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}Compare Plans - PG&E Energy Analyzer{% endblock %}
+
+{% block content %}
+<h1>Rate Plan Comparison</h1>
+
+{% if not has_data %}
+<article>
+    <p class="error">No usage data loaded. <a href="/">Upload a Green Button CSV</a> first.</p>
+</article>
+{% else %}
+
+<form hx-post="/compare" hx-target="#compare-results" hx-indicator="#compare-spinner">
+    <fieldset>
+        <legend>Select Rate Plans</legend>
+        <div class="form-row">
+            {% for plan in plans %}
+            <label>
+                <input type="checkbox" name="schedules" value="{{ plan }}"
+                    {% if plan in ["EV2-A", "E-ELEC"] %}checked{% endif %}>
+                {{ plan }}
+            </label>
+            {% endfor %}
+        </div>
+    </fieldset>
+
+    <div class="form-row">
+        <div>
+            <label for="provider">Provider</label>
+            <select id="provider" name="provider">
+                {% for code, name in providers %}
+                <option value="{{ code }}" {% if code == "PCE" %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="vintage_year">PCIA Vintage Year</label>
+            <select id="vintage_year" name="vintage_year">
+                {% for year in vintage_years %}
+                <option value="{{ year }}" {% if year == 2016 %}selected{% endif %}>{{ year }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="income_tier">Income Tier</label>
+            <select id="income_tier" name="income_tier">
+                {% for tier, label in income_tiers %}
+                <option value="{{ tier }}" {% if tier == 3 %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="nem_version">NEM Version</label>
+            <select id="nem_version" name="nem_version">
+                <option value="NEM2" selected>NEM 2.0</option>
+                <option value="NEM3">NEM 3.0</option>
+            </select>
+        </div>
+    </div>
+
+    <button type="submit">Compare Plans</button>
+    <span id="compare-spinner" class="htmx-indicator" aria-busy="true">Calculating...</span>
+</form>
+
+<div id="compare-results"></div>
+
+{% endif %}
+{% endblock %}

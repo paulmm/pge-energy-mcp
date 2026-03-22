@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}PG&E Energy Analyzer{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="/" class="brand">PG&amp;E Energy Analyzer</a></li>
+            <li><a href="/">Upload</a></li>
+            <li><a href="/compare">Compare</a></li>
+            <li><a href="/profile">Profile</a></li>
+            <li><a href="/trueup">True-Up</a></li>
+        </ul>
+    </nav>
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+    <footer class="container">
+        <hr>
+        <small>PG&amp;E Energy Analyzer &mdash; Proprious Labs. Data stays in your browser session.</small>
+    </footer>
+</body>
+</html>

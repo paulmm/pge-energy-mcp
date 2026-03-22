@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}True-Up Projection - PG&E Energy Analyzer{% endblock %}
+
+{% block content %}
+<h1>True-Up Projection</h1>
+
+{% if not has_data %}
+<article>
+    <p class="error">No usage data loaded. <a href="/">Upload a Green Button CSV</a> first.</p>
+</article>
+{% else %}
+
+<form hx-post="/trueup/project" hx-target="#trueup-results" hx-indicator="#trueup-spinner">
+    <div class="form-row">
+        <div>
+            <label for="schedule">Rate Schedule</label>
+            <select id="schedule" name="schedule">
+                <option value="EV2-A" selected>EV2-A</option>
+                <option value="E-ELEC">E-ELEC</option>
+                <option value="E-TOU-C">E-TOU-C</option>
+                <option value="E-TOU-D">E-TOU-D</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="provider">Provider</label>
+            <select id="provider" name="provider">
+                <option value="PGE_BUNDLED">PG&amp;E Bundled</option>
+                <option value="PCE" selected>Peninsula Clean Energy</option>
+                <option value="SVCE">Silicon Valley Clean Energy</option>
+                <option value="MCE">MCE Clean Energy</option>
+                <option value="SJCE">San Jose Clean Energy</option>
+                <option value="EBCE">East Bay Community Energy</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="vintage_year">PCIA Vintage</label>
+            <select id="vintage_year" name="vintage_year">
+                {% for y in range(2009, 2027) %}
+                <option value="{{ y }}" {% if y == 2016 %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label for="income_tier">Income Tier</label>
+            <select id="income_tier" name="income_tier">
+                <option value="1">Tier 1 (CARE)</option>
+                <option value="2">Tier 2 (FERA)</option>
+                <option value="3" selected>Tier 3 (Standard)</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="form-row">
+        <div>
+            <label for="nem_version">NEM Version</label>
+            <select id="nem_version" name="nem_version">
+                <option value="NEM2" selected>NEM 2.0</option>
+                <option value="NEM3">NEM 3.0</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="true_up_month">True-Up Month</label>
+            <select id="true_up_month" name="true_up_month">
+                {% for num, name in months %}
+                <option value="{{ num }}" {% if num == 1 %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <button type="submit">Project True-Up</button>
+        </div>
+    </div>
+    <span id="trueup-spinner" class="htmx-indicator" aria-busy="true">Projecting...</span>
+</form>
+
+<div id="trueup-results"></div>
+
+{% endif %}
+{% endblock %}

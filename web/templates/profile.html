@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Usage Profile - PG&E Energy Analyzer{% endblock %}
+
+{% block content %}
+<h1>Usage Profile</h1>
+
+{% if not has_data %}
+<article>
+    <p class="error">No usage data loaded. <a href="/">Upload a Green Button CSV</a> first.</p>
+</article>
+{% else %}
+
+<form hx-post="/profile/analyze" hx-target="#profile-results" hx-indicator="#profile-spinner">
+    <div class="form-row">
+        <div>
+            <label for="schedule">TOU Schedule (for period classification)</label>
+            <select id="schedule" name="schedule">
+                <option value="EV2-A" selected>EV2-A</option>
+                <option value="E-ELEC">E-ELEC</option>
+                <option value="E-TOU-C">E-TOU-C</option>
+                <option value="E-TOU-D">E-TOU-D</option>
+            </select>
+        </div>
+        <div>
+            <button type="submit">Analyze Usage</button>
+        </div>
+    </div>
+    <span id="profile-spinner" class="htmx-indicator" aria-busy="true">Analyzing...</span>
+</form>
+
+<div id="profile-results"></div>
+
+{% endif %}
+{% endblock %}

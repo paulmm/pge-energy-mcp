@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %}Upload - PG&E Energy Analyzer{% endblock %}
+
+{% block content %}
+<h1>Upload Green Button Data</h1>
+<p>Upload your PG&amp;E Green Button CSV export to analyze your energy usage, compare rate plans, and project your true-up bill.</p>
+
+{% if has_data %}
+<p><span class="data-badge">Data Loaded</span></p>
+{% else %}
+<p><span class="data-badge none">No Data</span></p>
+{% endif %}
+
+<div class="upload-area">
+    <form hx-post="/upload" hx-target="#upload-results" hx-encoding="multipart/form-data" hx-indicator="#upload-spinner">
+        <label for="file">
+            Select your Green Button CSV file
+        </label>
+        <input type="file" id="file" name="file" accept=".csv" required>
+        <button type="submit">Upload &amp; Parse</button>
+        <span id="upload-spinner" class="htmx-indicator" aria-busy="true">Processing...</span>
+    </form>
+</div>
+
+<div id="upload-results">
+    {% if summary %}
+    <div class="summary-card">
+        <h3>Loaded Data Summary</h3>
+        <div class="metric-cards">
+            <div class="metric-card">
+                <div class="value">{{ "{:,}".format(summary.num_intervals) }}</div>
+                <div class="label">Intervals</div>
+            </div>
+            <div class="metric-card">
+                <div class="value">{{ "{:,.0f}".format(summary.total_import_kwh) }}</div>
+                <div class="label">Total Import (kWh)</div>
+            </div>
+            <div class="metric-card">
+                <div class="value">{{ "{:,.0f}".format(summary.total_export_kwh) }}</div>
+                <div class="label">Total Export (kWh)</div>
+            </div>
+            <div class="metric-card">
+                <div class="value">${{ "{:,.2f}".format(summary.total_cost) }}</div>
+                <div class="label">Total Billed Cost</div>
+            </div>
+        </div>
+        {% if summary.date_range %}
+        <p>Date range: {{ summary.date_range.start }} to {{ summary.date_range.end }}</p>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

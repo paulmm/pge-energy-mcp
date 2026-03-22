@@ -1,0 +1,101 @@
+<div class="summary-card">
+    <h3>True-Up Summary</h3>
+    <div class="metric-cards">
+        <div class="metric-card">
+            <div class="value">${{ "{:,.2f}".format(results.summary.annual_total) }}</div>
+            <div class="label">Annual Total</div>
+        </div>
+        <div class="metric-card">
+            <div class="value debit">${{ "{:,.2f}".format(results.summary.true_up_balance) }}</div>
+            <div class="label">True-Up Balance</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">${{ "{:,.2f}".format(results.summary.total_bsc) }}</div>
+            <div class="label">Total BSC</div>
+        </div>
+        <div class="metric-card">
+            <div class="value">
+                <span class="credit">{{ results.summary.credit_months }}</span> /
+                <span class="debit">{{ results.summary.debit_months }}</span>
+            </div>
+            <div class="label">Credit / Debit Months</div>
+        </div>
+    </div>
+</div>
+
+{% if results.insights %}
+<div class="summary-card">
+    <h3>Insights</h3>
+    <ul class="insights">
+        {% for insight in results.insights %}
+        <li>{{ insight }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<h3>Monthly Breakdown</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Month</th>
+            <th>Days</th>
+            <th>Import (kWh)</th>
+            <th>Export (kWh)</th>
+            <th>NEM Balance</th>
+            <th>Cumulative NEM</th>
+            <th>BSC</th>
+            <th>Monthly Charge</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for b in results.monthly_balances %}
+        <tr>
+            <td>{{ b.year_month }}</td>
+            <td>{{ b.days }}</td>
+            <td>{{ "{:,.1f}".format(b.import_kwh) }}</td>
+            <td>{{ "{:,.1f}".format(b.export_kwh) }}</td>
+            <td>
+                {% if b.is_credit_month %}
+                <span class="credit">-${{ "{:,.2f}".format(b.nem_balance|abs) }}</span>
+                {% else %}
+                <span class="debit">${{ "{:,.2f}".format(b.nem_balance) }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if b.cumulative_nem < 0 %}
+                <span class="credit">-${{ "{:,.2f}".format(b.cumulative_nem|abs) }}</span>
+                {% else %}
+                ${{ "{:,.2f}".format(b.cumulative_nem) }}
+                {% endif %}
+            </td>
+            <td>${{ "{:,.2f}".format(b.bsc) }}</td>
+            <td>${{ "{:,.2f}".format(b.monthly_charge) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if results.worst_months %}
+<details>
+    <summary>Worst / Best Months</summary>
+    <div class="form-row">
+        <div>
+            <h4>Highest NEM Charges</h4>
+            <ul>
+                {% for w in results.worst_months %}
+                <li><span class="debit">{{ w.month }}: ${{ "{:,.2f}".format(w.nem_balance) }}</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div>
+            <h4>Best NEM Credits</h4>
+            <ul>
+                {% for b in results.best_months %}
+                <li><span class="credit">{{ b.month }}: -${{ "{:,.2f}".format(b.nem_balance|abs) }}</span></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</details>
+{% endif %}

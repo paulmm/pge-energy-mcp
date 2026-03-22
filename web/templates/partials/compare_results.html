@@ -1,0 +1,112 @@
+<div class="summary-card">
+    <h3>Plan Comparison Results</h3>
+    <p>NEM version: {{ results.nem_version }}
+    {% if results.time_aware %} | Time-aware rates applied{% endif %}</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Plan</th>
+                <th>Provider</th>
+                <th>Annual Total</th>
+                <th>Energy Cost</th>
+                <th>Export Credit</th>
+                <th>BSC</th>
+                <th>Savings</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for plan in results.plans %}
+            <tr {% if plan.plan == results.cheapest_plan %}class="cheapest"{% endif %}>
+                <td>
+                    <strong>{{ plan.plan.schedule }}</strong>
+                    {% if plan.plan == results.cheapest_plan %} (cheapest){% endif %}
+                </td>
+                <td>{{ plan.plan.provider }}</td>
+                <td><strong>${{ "{:,.2f}".format(plan.annual_total) }}</strong></td>
+                <td>${{ "{:,.2f}".format(plan.total_import_cost) }}</td>
+                <td class="credit">-${{ "{:,.2f}".format(plan.total_export_credit) }}</td>
+                <td>${{ "{:,.2f}".format(plan.base_services_charge) }}</td>
+                <td>
+                    {% if plan.savings_vs_baseline > 0 %}
+                    <span class="credit">${{ "{:,.2f}".format(plan.savings_vs_baseline) }}</span>
+                    {% elif plan.savings_vs_baseline < 0 %}
+                    <span class="debit">-${{ "{:,.2f}".format(plan.savings_vs_baseline|abs) }}</span>
+                    {% else %}
+                    &mdash;
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if results.max_savings > 0 %}
+    <p><strong>Maximum savings: ${{ "{:,.2f}".format(results.max_savings) }}/year</strong> by switching to {{ results.cheapest_plan.schedule }}.</p>
+    {% endif %}
+</div>
+
+{% for plan in results.plans %}
+<details>
+    <summary>TOU Breakdown: {{ plan.plan.schedule }}</summary>
+    <table>
+        <thead>
+            <tr>
+                <th>Period</th>
+                <th>Import (kWh)</th>
+                <th>Import Cost</th>
+                <th>Export (kWh)</th>
+                <th>Export Credit</th>
+                <th>Net Cost</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for period, data in plan.tou_breakdown.items() %}
+            <tr>
+                <td>{{ period.replace("_", " ").title() }}</td>
+                <td>{{ "{:,.1f}".format(data.import_kwh) }}</td>
+                <td>${{ "{:,.2f}".format(data.import_cost) }}</td>
+                <td>{{ "{:,.1f}".format(data.export_kwh) }}</td>
+                <td class="credit">-${{ "{:,.2f}".format(data.export_credit) }}</td>
+                <td>
+                    {% if data.net_cost < 0 %}
+                    <span class="credit">-${{ "{:,.2f}".format(data.net_cost|abs) }}</span>
+                    {% else %}
+                    ${{ "{:,.2f}".format(data.net_cost) }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if plan.season_summary %}
+    <table>
+        <thead>
+            <tr>
+                <th>Season</th>
+                <th>Import Cost</th>
+                <th>Export Credit</th>
+                <th>Net</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for season, s in plan.season_summary.items() %}
+            <tr>
+                <td>{{ season|capitalize }}</td>
+                <td>${{ "{:,.2f}".format(s.import_cost) }}</td>
+                <td class="credit">-${{ "{:,.2f}".format(s.export_credit) }}</td>
+                <td>
+                    {% if s.net < 0 %}
+                    <span class="credit">-${{ "{:,.2f}".format(s.net|abs) }}</span>
+                    {% else %}
+                    ${{ "{:,.2f}".format(s.net) }}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</details>
+{% endfor %}
