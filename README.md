@@ -2,7 +2,15 @@
 
 MCP server for PG&E residential solar + battery energy analysis. Upload your Green Button data, compare rate plans, project your true-up bill, and optimize battery dispatch — all through Claude or a web interface.
 
-Built for PG&E customers with solar, batteries (Powerwall), and EVs who want to answer: **Am I on the right rate plan? What upgrades save the most money?**
+## Why This Exists
+
+Getting a solar and battery system right is a multi-variable optimization problem, and the incentives in the industry don't help. Solar companies are paid to sell you the biggest system possible. They ask for your electric bills, size a system to "cover" your usage, and move on. The result is often an oversized system with too much upfront cost that generates far more than you'll ever use — money left on the roof.
+
+The smarter approach is to **understand your electricity usage first**: When do you actually consume power? How much is baseload vs. EV charging vs. seasonal heating? What's your peak exposure? Which rate plan fits your actual usage pattern? Only after answering those questions can you right-size a system that balances cost, production, and consumption.
+
+PG&E billing makes this harder than it should be. Between CCA vs. bundled providers, 20+ PCIA vintage years, NEM 2.0 export credits, time-of-use periods that vary by schedule, base services charges by income tier, and rate changes twice a year — most customers have no idea what they're actually paying per kWh or whether their rate plan is costing them hundreds extra per year.
+
+This server encodes all of that complexity so you can have a conversation with Claude about your actual energy data and get real answers: the right rate plan, the right system size, the right battery strategy.
 
 ## What It Does
 
