@@ -2,6 +2,8 @@
 
 MCP server for PG&E residential solar + battery energy analysis. Upload your Green Button data, compare rate plans, project your true-up bill, and optimize battery dispatch — all through Claude or a web interface.
 
+**TL;DR:** Solar companies are incentivized to sell you the biggest system possible. This tool helps you understand your actual usage first, then right-size your system — balancing cost, production, and consumption instead of just "covering the bill."
+
 ## Why This Exists
 
 Getting a solar and battery system right is a multi-variable optimization problem, and the incentives in the industry don't help. Solar companies are paid to sell you the biggest system possible. They ask for your electric bills, size a system to "cover" your usage, and move on. The result is often an oversized system with too much upfront cost that generates far more than you'll ever use — money left on the roof.
