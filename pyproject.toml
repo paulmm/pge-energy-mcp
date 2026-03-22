@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=2.0.0",
     "numpy>=1.24.0",
     "uvicorn>=0.30.0",
+    "pyomo>=6.7.0",
 ]
 
 [project.optional-dependencies]
@@ -22,7 +23,6 @@ dev = [
 phase2 = [
     "pypowerwall>=0.10.0",
     "solcast>=1.0.0",
-    "pyomo>=6.7.0",
 ]
 
 [build-system]

@@ -11,6 +11,9 @@ from fastmcp import FastMCP
 from typing import Optional
 import json
 
+from src.storage.config_store import get_store
+from src.data.system_config import SystemConfig
+
 mcp = FastMCP(
     "PG&E Energy Analyzer",
     description="Analyze PG&E solar + battery energy usage, compare rate plans, and model system expansions.",
@@ -86,34 +89,41 @@ async def compare_plans(
     interval_data: list[dict],
     plans: list[dict],
     nem_version: str = "NEM2",
+    config_id: str = None,
 ) -> dict:
     """
     Compare annual cost across multiple rate plan configurations using actual usage data.
-    
+
     Args:
         interval_data: Hourly records from parse_green_button (list of dicts with
                        datetime, import_kwh, export_kwh, hour, month fields)
         plans: List of plan configs, each with {schedule, provider, vintage_year, income_tier}
         nem_version: "NEM2" (full retail export credit) or "NEM3" (avoided cost export credit)
-        
+        config_id: Optional stored config ID — if provided, uses its nem_version as default
+
     Returns:
         Dict with annual cost per plan, savings vs baseline, breakdown by TOU period,
         and recommendation
     """
+    if config_id:
+        cfg = _load_config(config_id)
+        if not nem_version or nem_version == "NEM2":
+            nem_version = cfg.get("nem_version", nem_version)
     from src.analysis.compare import compare
     return compare(interval_data, plans, nem_version)
 
 
 @mcp.tool()
-async def usage_profile(interval_data: list[dict]) -> dict:
+async def usage_profile(interval_data: list[dict], config_id: str = None) -> dict:
     """
     Generate a comprehensive usage profile from hourly interval data.
-    
+
     Args:
         interval_data: Hourly records from parse_green_button
-        
+        config_id: Optional stored config ID (reserved for future per-user context)
+
     Returns:
-        Dict with: self_consumption_ratio, grid_dependency_by_season, 
+        Dict with: self_consumption_ratio, grid_dependency_by_season,
         peak_hour_exposure_pct, overnight_baseload_kwh, weekday_vs_weekend,
         monthly_trends, top_import_days
     """
@@ -127,6 +137,7 @@ async def simulate_system(
     system_config: dict,
     rate_config: dict,
     nem_version: str = "NEM2",
+    config_id: str = None,
 ) -> dict:
     """
     Compare current vs proposed solar+battery system using actual usage data.
@@ -153,7 +164,12 @@ async def simulate_system(
         Dict with: estimated_savings (sim-vs-sim, model errors cancel),
         current_simulated and proposed cost breakdowns, TOU period detail,
         monthly breakdown, green_button_baseline for context
+        config_id: Optional stored config ID — if provided, uses its nem_version as default
     """
+    if config_id:
+        cfg = _load_config(config_id)
+        if not nem_version or nem_version == "NEM2":
+            nem_version = cfg.get("nem_version", nem_version)
     from src.analysis.simulator import simulate
     return simulate(interval_data, system_config, rate_config, nem_version)
 
@@ -163,6 +179,7 @@ async def seasonal_strategy(
     interval_data: list[dict],
     rate_config: dict,
     system_config: dict = None,
+    config_id: str = None,
 ) -> dict:
     """
     Generate seasonal optimization recommendations based on usage and rates.
@@ -178,7 +195,12 @@ async def seasonal_strategy(
     Returns:
         Dict with seasonal analysis, rate spreads, monthly trends,
         and prioritized recommendations
+        config_id: Optional stored config ID — if provided and system_config not given,
+                   loads system info from stored config
     """
+    if config_id and system_config is None:
+        cfg = _load_config(config_id)
+        system_config = cfg
     from src.analysis.strategy import seasonal_strategy as compute
     return compute(interval_data, rate_config, system_config)
 
@@ -189,6 +211,7 @@ async def nem_projection(
     plan: dict,
     nem_version: str = "NEM2",
     true_up_month: int = 1,
+    config_id: str = None,
 ) -> dict:
     """
     Project NEM true-up bill from interval data.
@@ -208,9 +231,120 @@ async def nem_projection(
         Dict with monthly_balances (NEM balance, cumulative, BSC per month),
         summary (annual_total, true_up_balance, total_bsc), worst/best months,
         and human-readable insights.
+        config_id: Optional stored config ID — if provided, uses its nem_version and true_up_month
     """
+    if config_id:
+        cfg = _load_config(config_id)
+        if nem_version == "NEM2":
+            nem_version = cfg.get("nem_version", nem_version)
+        if true_up_month == 1:
+            true_up_month = cfg.get("true_up_month", true_up_month)
     from src.analysis.trueup import project_trueup
     return project_trueup(interval_data, plan, nem_version, true_up_month)
+
+
+def _load_config(config_id: str) -> dict:
+    """Load a stored config dict by ID. Raises ValueError if not found."""
+    store = get_store()
+    result = store.get(config_id)
+    if result is None:
+        raise ValueError(f"Config '{config_id}' not found")
+    return result["config"]
+
+
+# ── System Config Persistence Tools ──────────────────────────────────
+
+
+@mcp.tool()
+async def save_system_config(config_id: str, config: dict) -> dict:
+    """
+    Save a system configuration for later use.
+
+    Stores the full system config (arrays, batteries, rate plan, provider, etc.)
+    so it can be referenced by config_id in other tools instead of re-entering.
+
+    Args:
+        config_id: Unique identifier for this config (e.g., "brisbane-home")
+        config: System configuration dict matching the reference config shape.
+                Must include rate_plan, provider, etc. Arrays and batteries
+                are validated on save.
+
+    Returns:
+        Dict with config_id, created_at timestamp, and status
+    """
+    # Validate by constructing a SystemConfig (catches bad data early)
+    SystemConfig.from_dict(config)
+    store = get_store()
+    return store.save(config_id, config)
+
+
+@mcp.tool()
+async def get_system_config(config_id: str) -> dict:
+    """
+    Retrieve a stored system configuration.
+
+    Args:
+        config_id: The config identifier to look up
+
+    Returns:
+        Dict with config_id, config (full system config), created_at, updated_at.
+        Returns error message if not found.
+    """
+    store = get_store()
+    result = store.get(config_id)
+    if result is None:
+        return {"error": f"Config '{config_id}' not found", "config_id": config_id}
+    return result
+
+
+@mcp.tool()
+async def update_system_config(config_id: str, updates: dict) -> dict:
+    """
+    Partially update a stored system configuration.
+
+    Merges the updates into the existing config. Use this to change rate_plan,
+    add batteries, update arrays, etc. without re-sending the full config.
+
+    Args:
+        config_id: The config identifier to update
+        updates: Partial dict of fields to merge (e.g., {"rate_plan": "E-ELEC"}
+                 or {"batteries": [...]})
+
+    Returns:
+        Dict with config_id, updated config, updated_at timestamp, and status
+    """
+    store = get_store()
+    result = store.update(config_id, updates)
+    # Validate the merged config
+    SystemConfig.from_dict(result["config"])
+    return result
+
+
+@mcp.tool()
+async def list_system_configs() -> dict:
+    """
+    List all stored system configurations.
+
+    Returns:
+        Dict with configs list (config_id, created_at, updated_at per entry)
+    """
+    store = get_store()
+    return {"configs": store.list_all()}
+
+
+@mcp.tool()
+async def delete_system_config(config_id: str) -> dict:
+    """
+    Delete a stored system configuration.
+
+    Args:
+        config_id: The config identifier to delete
+
+    Returns:
+        Dict with config_id and status
+    """
+    store = get_store()
+    return store.delete(config_id)
 
 
 @mcp.tool()
@@ -252,6 +386,46 @@ async def solar_forecast(
     """
     from src.integrations.solcast import get_solar_forecast
     return get_solar_forecast(latitude, longitude, capacity_kw)
+
+
+@mcp.tool()
+async def optimize_battery(
+    interval_data: list[dict],
+    system_config: dict,
+    rate_config: dict,
+    nem_version: str = "NEM2",
+    horizon_days: int = 7,
+) -> dict:
+    """
+    Find the optimal battery charge/discharge schedule using mathematical optimization.
+
+    Uses Pyomo + CBC solver to minimize electricity cost by scheduling battery
+    dispatch across TOU periods. Finds better solutions than heuristic dispatch
+    by considering the full time horizon simultaneously.
+
+    The optimizer charges batteries during cheap off-peak hours and discharges
+    during expensive peak hours, accounting for round-trip efficiency losses
+    and ensuring the battery isn't artificially drained at the end.
+
+    Args:
+        interval_data: Hourly records from parse_green_button
+        system_config: {
+            "arrays": [{panels, panel_watts, inverter_watts_ac, type, ac_watts}],
+            "batteries": [{kwh, kw, efficiency, status}],
+            "psh_by_month": {"Jan": 3.2, ...}  // optional
+        }
+        rate_config: Rate plan config from get_rates output
+        nem_version: "NEM2" (full retail export credit) or "NEM3" (avoided cost)
+        horizon_days: Days to optimize (default 7, max limited by data)
+
+    Returns:
+        Dict with: optimal hourly schedule (action, kw, soc_pct per hour),
+        daily summary, TOU breakdown, savings vs no-battery baseline,
+        or error message if Pyomo/CBC not available.
+    """
+    from src.optimization.battery_optimizer import optimize_dispatch
+    return optimize_dispatch(interval_data, system_config, rate_config,
+                             nem_version, horizon_days)
 
 
 if __name__ == "__main__":
