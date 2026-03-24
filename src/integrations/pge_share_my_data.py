@@ -30,7 +30,9 @@ except ImportError:
 from src.integrations.espi_parser import parse_espi_xml
 
 # PG&E API endpoints
-PGE_AUTH_URL = "https://api.pge.com/datacustodian/oauth/v2/authorize"
+# Registration portal: https://sharemydata.pge.com
+# Docs: https://www.pge.com/en/save-energy-and-money/energy-saving-programs/smartmeter/third-party-companies.html
+PGE_AUTH_URL = "https://sharemydata.pge.com/myAuthorization"
 PGE_TOKEN_URL = "https://api.pge.com/datacustodian/oauth/v2/token"
 PGE_API_BASE = "https://api.pge.com/GreenButtonConnect"
 
@@ -59,13 +61,15 @@ def _not_configured_error() -> dict:
         "message": (
             "PG&E Share My Data API credentials not configured. "
             "To enable automatic data fetching:\n"
-            "1. Register as a third-party at https://developer.pge.com\n"
-            "2. Create a Share My Data application\n"
+            "1. Register at https://sharemydata.pge.com (requires EIN, TLS 1.2 cert, HTTPS redirect URI)\n"
+            "2. Complete API connectivity, OAuth, and resource request testing (90-day window)\n"
             "3. Set these environment variables:\n"
             "   PGE_CLIENT_ID=<your_client_id>\n"
             "   PGE_CLIENT_SECRET=<your_client_secret>\n"
             "   PGE_REDIRECT_URI=<your_redirect_uri>  (optional)\n"
-            "4. Your app must be approved by PG&E for production access"
+            "4. PG&E must approve your app for production access\n"
+            "More info: https://www.pge.com/en/save-energy-and-money/energy-saving-programs/smartmeter/third-party-companies.html\n"
+            "Support: ShareMyData@pge.com"
         ),
     }
 

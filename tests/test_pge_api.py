@@ -296,7 +296,7 @@ class TestAuthUrlGeneration:
             result = generate_auth_url("test-config")
             assert result["error"] == "not_configured"
             assert "PGE_CLIENT_ID" in result["message"]
-            assert "developer.pge.com" in result["message"]
+            assert "sharemydata.pge.com" in result["message"]
         finally:
             if old is not None:
                 os.environ["PGE_CLIENT_ID"] = old
