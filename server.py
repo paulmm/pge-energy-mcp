@@ -243,6 +243,36 @@ async def nem_projection(
     return project_trueup(interval_data, plan, nem_version, true_up_month)
 
 
+@mcp.tool()
+async def compare_nem_versions(
+    interval_data: list[dict],
+    plan: dict,
+    config_id: str = None,
+) -> dict:
+    """
+    Compare annual cost under NEM 2.0 vs NEM 3.0 for the same plan and usage.
+
+    Shows the financial impact of transitioning between NEM versions:
+    - NEM 2 customers: what happens when grandfathering expires
+    - NEM 3 customers: what they're paying vs NEM 2
+    - Prospective solar buyers: real economics under current NEM 3
+
+    Uses hourly Avoided Cost Calculator (ACC) values for NEM 3 — export
+    credits vary dramatically by time of day (summer peak $0.25 vs midday $0.03).
+
+    Args:
+        interval_data: Hourly records from parse_green_button
+        plan: Rate plan config {schedule, provider, vintage_year, income_tier}
+        config_id: Optional stored config ID
+
+    Returns:
+        Dict with NEM2 and NEM3 annual costs, credit loss breakdown by TOU
+        period and month, transition impact summary, and actionable insights.
+    """
+    from src.analysis.nem_compare import compare_nem_versions as compute
+    return compute(interval_data, plan)
+
+
 def _load_config(config_id: str) -> dict:
     """Load a stored config dict by ID. Raises ValueError if not found."""
     store = get_store()
