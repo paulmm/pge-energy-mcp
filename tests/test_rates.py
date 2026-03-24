@@ -109,6 +109,65 @@ class TestRateErrors:
             lookup_rates("EV2-A", "SVCE", 2017, 3)
 
 
+# ── NEM 3.0 Avoided Cost Calculator ──────────────────────────────────
+
+
+class TestNEM3ACC:
+    """Verify NEM 3.0 ACC-based export credits."""
+
+    def test_acc_summer_peak_highest(self):
+        """Summer peak hours should have highest ACC values."""
+        from src.rates.nem import get_acc_rate
+        summer_peak = get_acc_rate(17, 7)  # July 5PM
+        winter_overnight = get_acc_rate(3, 1)  # January 3AM
+        assert summer_peak > 5 * winter_overnight
+
+    def test_acc_midday_solar_surplus_low(self):
+        """Midday summer should be low (solar surplus depresses value)."""
+        from src.rates.nem import get_acc_rate
+        midday = get_acc_rate(13, 7)  # July 1PM
+        peak = get_acc_rate(17, 7)  # July 5PM
+        assert midday < 0.05
+        assert peak > 4 * midday
+
+    def test_acc_annual_average_reasonable(self):
+        """Annual average should be in $0.04-0.10 range per CLAUDE.md."""
+        from src.rates.nem import get_acc_summary
+        summary = get_acc_summary()
+        assert 0.04 < summary["annual_average"] < 0.10
+
+    def test_nem3_less_than_nem2(self):
+        """NEM3 export credit should be less than NEM2 for all periods."""
+        from src.rates.nem import calculate_export_credit
+        for hour, month in [(17, 7), (13, 7), (18, 1), (3, 1)]:
+            nem2 = calculate_export_credit(1.0, 0.40, "NEM2")
+            nem3 = calculate_export_credit(1.0, 0.40, "NEM3", hour=hour, month=month)
+            assert nem3 < nem2, f"NEM3 should be < NEM2 at hour={hour} month={month}"
+
+    def test_nem3_varies_by_hour(self):
+        """NEM3 should give different credits at different hours."""
+        from src.rates.nem import calculate_export_credit
+        peak = calculate_export_credit(1.0, 0.40, "NEM3", hour=17, month=7)
+        offpeak = calculate_export_credit(1.0, 0.40, "NEM3", hour=3, month=7)
+        assert peak != offpeak
+        assert peak > offpeak
+
+    def test_nem2_ignores_hour_month(self):
+        """NEM2 should give same credit regardless of hour/month."""
+        from src.rates.nem import calculate_export_credit
+        a = calculate_export_credit(1.0, 0.40, "NEM2", hour=17, month=7)
+        b = calculate_export_credit(1.0, 0.40, "NEM2", hour=3, month=1)
+        assert a == b
+
+    def test_acc_all_months_hours_positive(self):
+        """Every ACC value should be positive."""
+        from src.rates.nem import get_acc_rate
+        for month in range(1, 13):
+            for hour in range(24):
+                rate = get_acc_rate(hour, month)
+                assert rate > 0, f"ACC rate at month={month} hour={hour} is {rate}"
+
+
 # ── TOU classification ───────────────────────────────────────────────
 
 

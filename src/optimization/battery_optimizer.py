@@ -147,7 +147,8 @@ def optimize_dispatch(
         if nem_version == "NEM2":
             export_rate_arr.append(rate)  # full retail
         elif nem_version == "NEM3":
-            export_rate_arr.append(0.08)  # flat avoided cost
+            from src.rates.nem import get_acc_rate
+            export_rate_arr.append(get_acc_rate(hour, month))
         else:
             export_rate_arr.append(rate)
 

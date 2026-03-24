@@ -84,7 +84,8 @@ def project_trueup(interval_data: list, plan: dict,
         m["export_kwh"] += iv["export_kwh"]
         m["import_cost"] += iv["import_kwh"] * rate
         m["export_credit"] += calculate_export_credit(
-            iv["export_kwh"], rate, nem_version)
+            iv["export_kwh"], rate, nem_version,
+            hour=iv["hour"], month=iv["month"])
 
     # Build monthly balances in chronological order
     sorted_months = sorted(monthly_data.keys())

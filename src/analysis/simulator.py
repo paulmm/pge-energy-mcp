@@ -226,7 +226,8 @@ def _simulate_system(home_loads: list, arrays: list, batteries: list,
             grid_exp = max(0, -home_net)
 
         imp_cost = grid_imp * rate
-        exp_cred = calculate_export_credit(grid_exp, rate, nem_version)
+        exp_cred = calculate_export_credit(grid_exp, rate, nem_version,
+                                                  hour=hour, month=month)
 
         total_import += grid_imp
         total_export += grid_exp
@@ -389,6 +390,7 @@ def _compute_gb_cost(interval_data: list, effective_rates: dict,
             schedule_config=schedule_config)
         rate = effective_rates.get(season, {}).get(period, 0.0)
         total_cost += iv["import_kwh"] * rate
-        total_credit += calculate_export_credit(iv["export_kwh"], rate, nem_version)
+        total_credit += calculate_export_credit(iv["export_kwh"], rate, nem_version,
+                                                        hour=iv["hour"], month=iv["month"])
         days.add(iv["date"])
     return total_cost - total_credit + bsc_daily * len(days)
