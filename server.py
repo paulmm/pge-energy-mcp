@@ -14,28 +14,55 @@ import json
 from src.storage.config_store import get_store
 from src.data.system_config import SystemConfig
 
-mcp = FastMCP(
-    "PG&E Energy Analyzer",
-    description="Analyze PG&E solar + battery energy usage, compare rate plans, and model system expansions.",
-)
+mcp = FastMCP("PG&E Energy Analyzer")
 
 
 @mcp.tool()
 async def parse_green_button(csv_content: str) -> dict:
     """
-    Parse PG&E Green Button CSV export into structured hourly interval data.
-    
-    Accepts the raw CSV text from a PG&E Green Button "Download My Data" export.
-    Returns structured data with hourly import/export/cost classified by TOU period.
-    
+    Parse PG&E Green Button CSV with HOURLY interval data (~8,760 rows/year).
+
+    This is for the "Export My Data" download (hourly intervals), NOT "Export Bill
+    Totals" (monthly summaries). If the CSV has START DATE/END DATE columns with
+    monthly rows, use parse_billing_data instead.
+
+    The CSV has rows like: Electric usage,2025-03-20,00:00,00:59,2.94,0.00,$1.02
+    Each row is one hour with import kWh, export kWh, and cost.
+
     Args:
-        csv_content: Raw CSV text content from PG&E Green Button export
-        
+        csv_content: Raw CSV text from PG&E Green Button "Export My Data"
+
     Returns:
-        Dict with 'intervals' (list of hourly records), 'summary' (totals), 
-        and 'metadata' (account info, date range)
+        Dict with 'intervals' (hourly records with date, hour, month, day_of_week,
+        import_kwh, export_kwh, cost), 'summary' (totals), 'metadata' (account info)
     """
     from src.parsers.green_button import parse
+    return parse(csv_content)
+
+
+@mcp.tool()
+async def parse_billing_data(csv_content: str) -> dict:
+    """
+    Parse PG&E Green Button "Bill Totals" CSV export into monthly billing data.
+
+    Use this when a user uploads PG&E billing data (monthly bill summaries).
+    Handles both electric and gas billing exports. Auto-detects format.
+
+    This data shows monthly totals (import/export kWh and cost per billing period),
+    NOT hourly intervals. Use this to analyze billing trends, detect true-up cycles,
+    identify seasonal patterns, and compare year-over-year costs.
+
+    The CSV typically starts with metadata (Name, Address, Account) followed by
+    rows with TYPE, START DATE, END DATE, IMPORT (kWh), EXPORT (kWh), COST.
+
+    Args:
+        csv_content: Raw CSV text from PG&E Green Button "Export Bill Totals"
+
+    Returns:
+        Dict with 'bills' (monthly records), 'summary' (totals, true-up detection,
+        seasonal patterns, year-over-year), and 'metadata' (account info)
+    """
+    from src.parsers.billing import parse
     return parse(csv_content)
 
 
@@ -610,5 +637,7 @@ if __name__ == "__main__":
 
         app = create_web_app()
         uvicorn.run(app, host="0.0.0.0", port=8001)
+    elif "--stdio" in sys.argv:
+        mcp.run(transport="stdio")
     else:
         mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)

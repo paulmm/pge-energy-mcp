@@ -3,7 +3,7 @@ name = "pge-energy-mcp"
 version = "0.1.0"
 description = "MCP server for PG&E solar + battery energy analysis"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [{name = "Proprious Labs"}]
 
@@ -31,4 +31,4 @@ phase2 = [
 
 [build-system]
 requires = ["setuptools>=68.0"]
-build-backend = "setuptools.backends._legacy:_Backend"
+build-backend = "setuptools.build_meta"

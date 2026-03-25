@@ -81,6 +81,42 @@ def parse(csv_content: str) -> dict:
 
     metadata["date_range"] = date_range
 
+    has_solar = total_export > 0
+    next_steps = []
+
+    if has_solar:
+        next_steps.append({
+            "action": "detected",
+            "message": "Solar system detected — your hourly data shows grid exports under NEM.",
+        })
+        next_steps.append({
+            "action": "ask_user",
+            "message": "Do you have a battery system (e.g., Tesla Powerwall, Enphase, Franklin)? If so, upload your battery/solar data — for Tesla, go to the Tesla app > Settings > Energy Data > Download My Data. Battery data lets us optimize dispatch strategy and see if your battery is working effectively.",
+        })
+        next_steps.append({
+            "action": "ask_user",
+            "message": "What rate plan are you on? (e.g., EV2-A, E-ELEC, E-TOU-C, E-TOU-D) And are you with a Community Choice provider like PCE, SJCE, SVCE, etc. — or bundled with PG&E?",
+            "why": "Needed to calculate your actual effective rates and compare against alternative plans.",
+        })
+        next_steps.append({
+            "action": "ask_user",
+            "message": "Are you on NEM 2.0 or NEM 3.0? (NEM 2 if solar was installed before April 2023, NEM 3 if after.)",
+        })
+        next_steps.append({
+            "action": "suggest_tools",
+            "tools": ["usage_profile", "compare_plans", "compare_nem_versions"],
+            "message": "With your rate plan info, we can run: usage profiling (peak exposure, baseload, seasonal patterns), rate plan comparison (find the cheapest plan), and NEM 2 vs 3 transition analysis.",
+        })
+    else:
+        next_steps.append({
+            "action": "ask_user",
+            "message": "Your data shows no solar exports. Do you have solar panels, or are you considering getting them? We can still analyze your usage patterns and find the best rate plan.",
+        })
+        next_steps.append({
+            "action": "ask_user",
+            "message": "What rate plan are you on? (e.g., EV2-A, E-ELEC, E-TOU-C, E-TOU-D) We can check if a different plan would save you money.",
+        })
+
     return {
         "metadata": metadata,
         "intervals": intervals,
@@ -91,6 +127,7 @@ def parse(csv_content: str) -> dict:
             "num_intervals": len(intervals),
             "date_range": date_range,
         },
+        "next_steps": next_steps,
     }
 
 
