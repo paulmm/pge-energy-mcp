@@ -32,35 +32,52 @@ This server encodes all of that complexity so you can have a conversation with C
 
 - **Integrations** — Tesla FleetAPI (Powerwall status), Solcast (solar forecast).
 
-## Quick Start
+## Getting Started
 
-### As an MCP Server (Claude Desktop / claude.ai)
+Upload your PG&E Green Button data and ask:
+
+> **"Here is my PG&E data. Help me optimize my energy costs."**
+
+That's it. The server parses your data, detects your solar system, then guides you through the analysis — asking about your battery, rate plan, and NEM version before running comparisons and recommendations.
+
+### Example Prompts
+
+- "Here is my Green Button data. What are the best ways to optimize my energy usage?"
+- "My NEM 2 grandfathering expires next year. How much more will I pay?"
+- "Would adding a second Powerwall save me money?"
+- "What will my true-up bill be this year?"
+- "When should I charge and discharge my Powerwall to minimize costs?"
+- "Am I on the right rate plan?"
+
+### Setup — Claude Desktop (Mac/Windows)
 
 ```bash
-# Clone and install
 git clone https://github.com/paulmm/pge-energy-mcp.git
 cd pge-energy-mcp
 pip install -e .
-
-# Run the MCP server
-python server.py
 ```
 
-Add to your Claude Desktop config (`claude_desktop_config.json`):
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "pge-energy": {
-      "command": "python",
-      "args": ["/path/to/pge-energy-mcp/server.py"],
-      "env": {}
+      "command": "/path/to/pge-energy-mcp/.venv/bin/python",
+      "args": ["/path/to/pge-energy-mcp/server.py", "--stdio"]
     }
   }
 }
 ```
 
-Then in Claude: *"Here's my Green Button CSV data. Compare EV2-A vs E-ELEC for a PCE customer with 2016 vintage."*
+Restart Claude Desktop. You'll see the MCP tools icon in the chat input.
+
+### Setup — Remote (claude.ai / Streamable HTTP)
+
+```bash
+python server.py
+# Runs on http://0.0.0.0:8000/mcp
+```
 
 ### As a Web App
 
@@ -77,12 +94,19 @@ Upload your CSV, compare plans, view usage profile, and project your true-up —
 
 The included `Procfile` runs the MCP server on Railway's assigned port. Set environment variables for optional integrations.
 
-## MCP Tools (19 total)
+### How to Get Your Data
+
+1. **Green Button (PG&E)** — Go to [pge.com](https://www.pge.com) > Account > Energy Usage > Green Button > "Export My Data" for hourly intervals, or "Export Bill Totals" for monthly summaries. Both formats are supported.
+2. **Tesla** — Tesla app > Settings > Energy Data > Download My Data. Upload the CSV for battery/solar analysis.
+3. **Share My Data API** — Connect directly via OAuth for automatic data fetching (see Environment Variables below).
+
+## MCP Tools (21 total)
 
 ### Data Parsing
 | Tool | Description |
 |------|-------------|
-| `parse_green_button` | Parse PG&E Green Button CSV into structured hourly intervals |
+| `parse_green_button` | Parse PG&E Green Button hourly interval CSV ("Export My Data") |
+| `parse_billing_data` | Parse PG&E Green Button monthly bill totals ("Export Bill Totals") |
 | `parse_tesla_export` | Parse Tesla app CSV with auto unit detection (MWh/kWh varies by year) |
 
 ### Rate Engine
@@ -98,6 +122,7 @@ The included `Procfile` runs the MCP server on Railway's assigned port. Set envi
 | `simulate_system` | Model solar/battery upgrades with sim-vs-sim error cancellation |
 | `seasonal_strategy` | Optimization recommendations by season |
 | `nem_projection` | NEM true-up bill projection with monthly breakdown |
+| `compare_nem_versions` | NEM 2 vs NEM 3 transition impact analysis |
 | `optimize_battery` | Pyomo MILP optimal battery dispatch schedule |
 
 ### System Config
@@ -167,7 +192,7 @@ pge-energy-mcp/
 │   ├── pcia_vintages.json        # PCIA per-kWh by vintage year
 │   └── rate_history.json         # Historical rate overrides (time-aware)
 ├── src/
-│   ├── parsers/                  # Green Button CSV, Tesla CSV
+│   ├── parsers/                  # Green Button (hourly + billing), Tesla CSV
 │   ├── rates/                    # Rate engine, TOU classification, NEM credits
 │   ├── analysis/                 # Compare, usage, simulator, strategy, true-up
 │   ├── optimization/             # Pyomo MILP battery optimizer
@@ -179,7 +204,7 @@ pge-energy-mcp/
 │   ├── routes/                   # Upload, compare, profile, true-up
 │   ├── templates/                # Jinja2 + htmx partials
 │   └── static/                   # CSS
-└── tests/                        # 230 tests
+└── tests/                        # 234 tests
 ```
 
 Domain logic lives in `src/` — MCP tools and web routes are thin wrappers. The same engine powers both interfaces.
@@ -201,11 +226,14 @@ brew install cbc          # macOS
 apt-get install coinor-cbc  # Linux
 ```
 
-## How Green Button Data Works
+## Green Button Data Formats
 
-Export from [PG&E's website](https://www.pge.com/en/save-energy-and-money/energy-usage-and-tips/green-button-download-my-data.html) → "Download My Data" → CSV with hourly import/export/cost for up to 13 months.
+PG&E offers two Green Button export formats — both are supported:
 
-The server parses the CSV, classifies each hour by TOU period and season, and runs it through the rate engine to calculate costs under any plan configuration.
+- **"Export My Data"** — Hourly intervals (~8,760 rows/year). Each row has date, hour, import kWh, export kWh, and cost. This is the most useful format for TOU optimization, battery scheduling, and system modeling.
+- **"Export Bill Totals"** — Monthly billing summaries. Each row covers a billing period with total import, export, and cost. Useful for trend analysis, true-up detection, and year-over-year comparison.
+
+The server auto-detects which format you uploaded and guides you through the analysis flow.
 
 ## License
 
