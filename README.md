@@ -1,55 +1,76 @@
-# pge-energy-mcp
+# PG&E Energy Analyzer
 
-MCP server for PG&E residential solar + battery energy analysis. Upload your Green Button data, compare rate plans, project your true-up bill, and optimize battery dispatch — all through Claude or a web interface.
-
-**TL;DR:** Solar companies are incentivized to sell you the biggest system possible. This tool helps you understand your actual usage first, then right-size your system — balancing cost, production, and consumption instead of just "covering the bill."
-
-## Why This Exists
-
-Getting a solar and battery system right is a multi-variable optimization problem, and the incentives in the industry don't help. Solar companies are paid to sell you the biggest system possible. They ask for your electric bills, size a system to "cover" your usage, and move on. The result is often an oversized system with too much upfront cost that generates far more than you'll ever use — money left on the roof.
-
-The smarter approach is to **understand your electricity usage first**: When do you actually consume power? How much is baseload vs. EV charging vs. seasonal heating? What's your peak exposure? Which rate plan fits your actual usage pattern? Only after answering those questions can you right-size a system that balances cost, production, and consumption.
-
-PG&E billing makes this harder than it should be. Between CCA vs. bundled providers, 20+ PCIA vintage years, NEM 2.0 export credits, time-of-use periods that vary by schedule, base services charges by income tier, and rate changes twice a year — most customers have no idea what they're actually paying per kWh or whether their rate plan is costing them hundreds extra per year.
-
-This server encodes all of that complexity so you can have a conversation with Claude about your actual energy data and get real answers: the right rate plan, the right system size, the right battery strategy.
-
-## What It Does
-
-- **Rate engine** — Encodes PG&E's billing complexity: 4 rate schedules (EV2-A, E-ELEC, E-TOU-C, E-TOU-D), CCA vs bundled providers, 20+ PCIA vintage years, NEM 2.0/3.0 export credits, time-of-use periods, base services charges by income tier, and historical rate changes over time.
-
-- **Plan comparison** — Calculate annual cost across multiple rate plans using your actual hourly usage. Shows savings, TOU period breakdown, and seasonal analysis.
-
-- **True-up projection** — Accumulate monthly NEM balances and project your annual true-up bill. See which months generate credits vs charges.
-
-- **Battery optimizer** — Pyomo MILP solver finds the mathematically optimal charge/discharge schedule given your rates and usage.
-
-- **Usage profiler** — Peak exposure, overnight baseload, seasonal patterns, worst import days.
-
-- **System simulator** — Model solar panel additions, battery upgrades, and dispatch strategy changes. Errors cancel in sim-vs-sim comparison.
-
-- **PG&E Share My Data** — OAuth integration to auto-fetch interval data from PG&E's Green Button Connect API.
-
-- **Integrations** — Tesla FleetAPI (Powerwall status), Solcast (solar forecast).
-
-## Getting Started
-
-Upload your PG&E Green Button data and ask:
+Upload your PG&E energy data, have a conversation about it, and get real answers — the right rate plan, whether your solar system is sized right, and how to cut your true-up bill.
 
 > **"Here is my PG&E data. Help me optimize my energy costs."**
 
-That's it. The server parses your data, detects your solar system, then guides you through the analysis — asking about your battery, rate plan, and NEM version before running comparisons and recommendations.
+Works with Claude Desktop, claude.ai, or as a standalone web app.
+
+## Why This Exists
+
+### The solar industry problem
+
+Solar companies are paid to sell you the biggest system possible. They ask for your electric bills, size a system to "cover" your usage, and move on. The result is often an oversized system — too much upfront cost generating more than you'll ever use.
+
+The smarter approach is to **understand your electricity usage first**: When do you actually consume power? How much is baseload vs. EV charging vs. seasonal heating? What's your peak exposure? Only then can you right-size a system that balances cost, production, and consumption.
+
+### The PG&E billing problem
+
+PG&E billing is extraordinarily complex, and most customers have no idea what they're actually paying per kWh. Your effective rate depends on:
+
+- **Rate schedule** — EV2-A, E-ELEC, E-TOU-C, E-TOU-D all have different peak windows and pricing
+- **Provider** — Bundled PG&E vs. Community Choice (PCE, SJCE, SVCE, etc.) have completely different rate structures
+- **PCIA vintage** — A per-kWh charge permanently set by the year you joined your CCA (20+ different values)
+- **NEM version** — NEM 2.0 exports earn full retail credit; NEM 3.0 earns ~75% less via hourly Avoided Cost Calculator values
+- **Time-of-use** — The same kWh costs 2-3x more during peak hours (4-9 PM) than off-peak
+- **Income tier** — Base services charges range from $0.20 to $0.79/day depending on tier
+
+Rates change roughly twice a year, and CCA rates change independently. Asking ChatGPT or Claude about your PG&E rates will get you hallucinated numbers. **This tool has the actual tariff rates built in** — verified against PG&E rate sheets effective March 2026.
+
+### Why not just ask Claude?
+
+Without this tool, Claude will:
+- **Hallucinate rates** — It doesn't know EV2-A winter off-peak is $0.20635 for a PCE 2016-vintage customer
+- **Confuse CCA vs. bundled** — PG&E bills show *delivery* rates, not total rates. The formula is `delivery + CCA generation + PCIA vintage`
+- **Guess at NEM 3 export values** — The real Avoided Cost Calculator has 288 hourly values (12 months × 24 hours) ranging from $0.025 to $0.28. Claude would guess "$0.08"
+- **Miss TOU differences** — EV2-A peak is every day; E-TOU-D peak is weekdays only. Wrong windows = wrong analysis
+- **Not understand true-up** — NEM credits accumulate monthly and settle once a year. The true-up IS the bill
+
+This tool encodes all of that complexity so Claude can give you accurate, personalized answers.
+
+## How It Works
+
+Upload your PG&E data and the tool guides you through a complete analysis:
+
+1. **Upload your data** — Green Button CSV from pge.com (hourly intervals or monthly bill totals)
+2. **Solar detected** — If your data shows exports, the tool knows you have solar
+3. **Battery check** — Asks if you have a Powerwall or other battery, and how to upload that data
+4. **Rate plan & provider** — Asks your rate schedule and whether you're bundled PG&E or with a CCA
+5. **NEM version** — Asks if you're on NEM 2.0 or 3.0 (based on when solar was installed)
+6. **Analysis** — Runs rate comparisons, usage profiling, true-up projections, and optimization recommendations
+7. **Deeper data** — If you uploaded bill totals, suggests downloading hourly data for TOU optimization and battery scheduling
 
 ### Example Prompts
 
 - "Here is my Green Button data. What are the best ways to optimize my energy usage?"
-- "My NEM 2 grandfathering expires next year. How much more will I pay?"
-- "Would adding a second Powerwall save me money?"
-- "What will my true-up bill be this year?"
-- "When should I charge and discharge my Powerwall to minimize costs?"
 - "Am I on the right rate plan?"
+- "My NEM 2 grandfathering expires next year. How much more will I pay?"
+- "What will my true-up bill be this year?"
+- "Would adding a second Powerwall save me money?"
+- "When should I charge and discharge my Powerwall to minimize costs?"
 
-### Setup — Claude Desktop (Mac/Windows)
+## Get Your PG&E Data
+
+1. **Green Button** — Go to [pge.com](https://www.pge.com) > Account > Energy Usage > Green Button
+   - **"Export My Data"** — Hourly intervals (~8,760 rows/year). Best for detailed analysis
+   - **"Export Bill Totals"** — Monthly summaries. Good for trends and year-over-year comparison
+   - Both formats are supported — the tool auto-detects which one you uploaded
+2. **Tesla data** — Tesla app > Settings > Energy Data > Download My Data
+3. **Automatic** — Connect via PG&E's Share My Data API for ongoing data access
+
+## Setup
+
+### Claude Desktop (Mac/Windows)
 
 ```bash
 git clone https://github.com/paulmm/pge-energy-mcp.git
@@ -70,93 +91,57 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 }
 ```
 
-Restart Claude Desktop. You'll see the MCP tools icon in the chat input.
+Restart Claude Desktop. You'll see the tools icon in the chat input.
 
-### Setup — Remote (claude.ai / Streamable HTTP)
+### claude.ai / Remote
 
 ```bash
 python server.py
 # Runs on http://0.0.0.0:8000/mcp
 ```
 
-### As a Web App
+### Web App
 
 ```bash
 python server.py --web
 # Open http://localhost:8001
 ```
 
-Upload your CSV, compare plans, view usage profile, and project your true-up — all in the browser.
-
-### Deploy to Railway
+### Railway
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template)
 
-The included `Procfile` runs the MCP server on Railway's assigned port. Set environment variables for optional integrations.
+## What's Inside
 
-### How to Get Your Data
+### Analysis Tools
 
-1. **Green Button (PG&E)** — Go to [pge.com](https://www.pge.com) > Account > Energy Usage > Green Button > "Export My Data" for hourly intervals, or "Export Bill Totals" for monthly summaries. Both formats are supported.
-2. **Tesla** — Tesla app > Settings > Energy Data > Download My Data. Upload the CSV for battery/solar analysis.
-3. **Share My Data API** — Connect directly via OAuth for automatic data fetching (see Environment Variables below).
-
-## MCP Tools (21 total)
-
-### Data Parsing
-| Tool | Description |
-|------|-------------|
-| `parse_green_button` | Parse PG&E Green Button hourly interval CSV ("Export My Data") |
-| `parse_billing_data` | Parse PG&E Green Button monthly bill totals ("Export Bill Totals") |
-| `parse_tesla_export` | Parse Tesla app CSV with auto unit detection (MWh/kWh varies by year) |
+| What it does | How to ask |
+|---|---|
+| **Rate plan comparison** — Annual cost across EV2-A, E-ELEC, E-TOU-C, E-TOU-D | "Am I on the right rate plan?" |
+| **Usage profiling** — Peak exposure, baseload, seasonal patterns, worst days | "Break down my energy usage" |
+| **True-up projection** — Monthly NEM balance accumulation and annual bill | "What will my true-up be?" |
+| **NEM 2 vs 3 comparison** — Transition impact, credit loss, worst months | "How much more will NEM 3 cost me?" |
+| **Battery optimization** — Mathematically optimal charge/discharge schedule | "When should my Powerwall charge?" |
+| **System simulator** — Model adding panels, batteries, or changing dispatch | "Would more solar panels help?" |
+| **Seasonal strategy** — Season-specific optimization recommendations | "How should I prepare for summer?" |
 
 ### Rate Engine
-| Tool | Description |
-|------|-------------|
-| `get_rates` | Look up effective $/kWh rates for any schedule + provider + vintage + tier |
 
-### Analysis
-| Tool | Description |
-|------|-------------|
-| `compare_plans` | Annual cost comparison across multiple rate plans |
-| `usage_profile` | Peak exposure, baseload, seasonal patterns, worst days |
-| `simulate_system` | Model solar/battery upgrades with sim-vs-sim error cancellation |
-| `seasonal_strategy` | Optimization recommendations by season |
-| `nem_projection` | NEM true-up bill projection with monthly breakdown |
-| `compare_nem_versions` | NEM 2 vs NEM 3 transition impact analysis |
-| `optimize_battery` | Pyomo MILP optimal battery dispatch schedule |
+Encodes the full complexity of PG&E billing:
 
-### System Config
-| Tool | Description |
-|------|-------------|
-| `save_system_config` | Persist system config (arrays, batteries, rate plan) |
-| `get_system_config` | Retrieve stored config |
-| `update_system_config` | Partial update (change rate plan, add battery, etc.) |
-| `list_system_configs` | List all stored configs |
-| `delete_system_config` | Delete a stored config |
+- 4 rate schedules with correct TOU windows and seasonal pricing
+- CCA vs. bundled provider rates (PCE fully supported, others in progress)
+- 20+ PCIA vintage years ($0.030-$0.054/kWh charge, or -$0.010 credit for 2025+)
+- NEM 2.0 full retail credits and NEM 3.0 hourly Avoided Cost Calculator (288 values)
+- Base services charges by income tier ($0.20-$0.79/day)
+- Historical rate tracking for time-aware analysis
+- All rates verified against PG&E tariff sheets effective March 1, 2026
 
-### Integrations
-| Tool | Description |
-|------|-------------|
-| `powerwall_status` | Real-time Powerwall status via Tesla FleetAPI |
-| `solar_forecast` | Solar production forecast via Solcast API |
-| `connect_pge` | Start PG&E Share My Data OAuth flow |
-| `complete_pge_connection` | Complete OAuth with authorization code |
-| `fetch_pge_data` | Fetch interval data from PG&E API |
+### Data Parsing
 
-## Environment Variables
+Handles PG&E's Green Button CSV (hourly intervals and monthly bill totals), Tesla energy exports (with automatic unit detection — Tesla mixes MWh and kWh across different export types), and PG&E Share My Data API (ESPI/XML format).
 
-All optional — tools return helpful setup instructions when credentials are missing.
-
-| Variable | Purpose |
-|----------|---------|
-| `DATA_DIR` | SQLite storage directory (default: `./data`) |
-| `TESLA_FLEET_TOKEN` | Tesla FleetAPI access token |
-| `SOLCAST_API_KEY` | Solcast API key (Hobbyist: 10 req/day) |
-| `PGE_CLIENT_ID` | PG&E Share My Data OAuth client ID |
-| `PGE_CLIENT_SECRET` | PG&E Share My Data OAuth client secret |
-| `PGE_REDIRECT_URI` | OAuth callback URL |
-
-## Supported Rate Schedules
+### Supported Rate Schedules
 
 | Schedule | Peak Window | Peak Days | Summer | Notes |
 |----------|-------------|-----------|--------|-------|
@@ -165,49 +150,11 @@ All optional — tools return helpful setup instructions when credentials are mi
 | **E-TOU-C** | 4-9 PM | Every day | Jun-Sep | Default residential TOU, baseline-tiered |
 | **E-TOU-D** | 5-8 PM | Weekdays only | Jun-Sep | Shortest/narrowest peak window |
 
-All rates verified against PG&E tariff sheets effective March 1, 2026.
-
 ### Providers
-- **PGE_BUNDLED** — PG&E bundled service
-- **PCE** — Peninsula Clean Energy (San Mateo County)
-- Additional CCAs (SVCE, MCE, SJCE, EBCE) have placeholder configs
 
-### How PG&E Billing Works
-
-For CCA customers: `effective_rate = pge_delivery + cca_generation + pcia_vintage`
-
-For bundled PG&E: `effective_rate = total_bundled_rate`
-
-Example (EV2-A + PCE, 2016 vintage, winter off-peak):
-`$0.13012 + $0.03936 + $0.03687 = $0.20635/kWh`
-
-## Architecture
-
-```
-pge-energy-mcp/
-├── server.py                     # FastMCP server + web app composition
-├── config/
-│   ├── pge_rates.json            # PG&E delivery & bundled rates
-│   ├── cca_rates.json            # CCA provider generation rates
-│   ├── pcia_vintages.json        # PCIA per-kWh by vintage year
-│   └── rate_history.json         # Historical rate overrides (time-aware)
-├── src/
-│   ├── parsers/                  # Green Button (hourly + billing), Tesla CSV
-│   ├── rates/                    # Rate engine, TOU classification, NEM credits
-│   ├── analysis/                 # Compare, usage, simulator, strategy, true-up
-│   ├── optimization/             # Pyomo MILP battery optimizer
-│   ├── integrations/             # Tesla FleetAPI, Solcast, PG&E Share My Data
-│   ├── storage/                  # SQLite config persistence
-│   └── data/                     # SystemConfig dataclass
-├── web/
-│   ├── app.py                    # FastAPI application
-│   ├── routes/                   # Upload, compare, profile, true-up
-│   ├── templates/                # Jinja2 + htmx partials
-│   └── static/                   # CSS
-└── tests/                        # 234 tests
-```
-
-Domain logic lives in `src/` — MCP tools and web routes are thin wrappers. The same engine powers both interfaces.
+- **PGE_BUNDLED** — PG&E bundled service (effective_rate = total bundled rate)
+- **PCE** — Peninsula Clean Energy (effective_rate = PG&E delivery + PCE generation + PCIA vintage)
+- Additional CCAs (SVCE, MCE, SJCE, EBCE) — placeholder configs ready for rate data
 
 ## Development
 
@@ -215,25 +162,41 @@ Domain logic lives in `src/` — MCP tools and web routes are thin wrappers. The
 # Install with dev dependencies
 pip install -e ".[dev]"
 
-# Run tests
+# Run tests (234 tests)
 pytest
-
-# Run tests with verbose output
-pytest -v
 
 # Install CBC solver for battery optimizer
 brew install cbc          # macOS
 apt-get install coinor-cbc  # Linux
 ```
 
-## Green Button Data Formats
+### Environment Variables
 
-PG&E offers two Green Button export formats — both are supported:
+All optional — tools return helpful setup instructions when credentials are missing.
 
-- **"Export My Data"** — Hourly intervals (~8,760 rows/year). Each row has date, hour, import kWh, export kWh, and cost. This is the most useful format for TOU optimization, battery scheduling, and system modeling.
-- **"Export Bill Totals"** — Monthly billing summaries. Each row covers a billing period with total import, export, and cost. Useful for trend analysis, true-up detection, and year-over-year comparison.
+| Variable | Purpose |
+|----------|---------|
+| `DATA_DIR` | SQLite storage directory (default: `./data`) |
+| `TESLA_FLEET_TOKEN` | Tesla FleetAPI access token |
+| `SOLCAST_API_KEY` | Solcast API key |
+| `PGE_CLIENT_ID` | PG&E Share My Data OAuth client ID |
+| `PGE_CLIENT_SECRET` | PG&E Share My Data OAuth client secret |
 
-The server auto-detects which format you uploaded and guides you through the analysis flow.
+### Architecture
+
+Domain logic lives in `src/` — the MCP server and web app are thin wrappers over the same engine.
+
+```
+server.py                     # MCP tool definitions
+src/parsers/                  # Green Button (hourly + billing), Tesla CSV
+src/rates/                    # Rate engine, TOU classification, NEM credits
+src/analysis/                 # Compare, usage, simulator, strategy, true-up, NEM transition
+src/optimization/             # Pyomo MILP battery optimizer
+src/integrations/             # Tesla FleetAPI, Solcast, PG&E Share My Data
+src/storage/                  # SQLite config persistence
+web/                          # FastAPI + Jinja2 + htmx web app
+tests/                        # 234 tests
+```
 
 ## License
 
