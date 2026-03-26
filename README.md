@@ -213,7 +213,7 @@ If you have a Tesla Powerwall, the tool can read live status and control your ba
 | **Grid charging** | Enable/disable charging from the grid (key for TOU arbitrage) |
 | **Grid export** | Control export behavior — battery+solar, solar only, or never |
 
-Requires [pypowerwall](https://github.com/jasonacox/pypowerwall) in Cloud or FleetAPI mode. Local Gateway mode is read-only.
+Requires [pypowerwall](https://github.com/jasonacox/pypowerwall) — connects to your Powerwall through your Tesla account. Setup takes ~2 minutes: `pip install pypowerwall && python -m pypowerwall setup`.
 
 ### Rate Engine
 
