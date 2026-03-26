@@ -870,6 +870,10 @@ def create_combined_app():
     return root
 
 
+# ASGI app for deployment (Railway, uvicorn, etc.)
+app = mcp.http_app()
+
+
 if __name__ == "__main__":
     import sys
 
@@ -877,9 +881,11 @@ if __name__ == "__main__":
         import uvicorn
         from web.app import create_web_app
 
-        app = create_web_app()
-        uvicorn.run(app, host="0.0.0.0", port=8001)
+        web = create_web_app()
+        uvicorn.run(web, host="0.0.0.0", port=8001)
     elif "--stdio" in sys.argv:
         mcp.run(transport="stdio")
     else:
-        mcp.run(transport="streamable-http", host="0.0.0.0", port=8000)
+        import os
+        port = int(os.environ.get("PORT", 8000))
+        mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
