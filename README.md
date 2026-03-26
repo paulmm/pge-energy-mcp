@@ -89,13 +89,15 @@ This tool encodes all of that complexity so Claude gives you **accurate, persona
 
 Go to [pge.com](https://www.pge.com) and download two things:
 
-| What to download | Where to find it |
-|---|---|
-| **Green Button data** | Account > Energy Usage > Green Button > **"Export My Data"** or **"Export Bill Totals"** |
-| **Latest bill (PDF)** | Account > Billing > **View/Download Bill** |
+1. Go to [myaccount.pge.com](https://myaccount.pge.com/myaccount/s/usageandconsumption-homepage)
+2. Click **"Green Button — Download my data"**
+3. Scroll down in the download window, keep defaults (Export all bill totals, CSV format), click **Export**
+4. Download your **latest bill PDF** from Account > Billing
 
 <p align="center">
-  <img src="screenshots/pge-usage-page.png" width="300" alt="PG&E energy usage page — where to find Green Button download" />
+  <img src="screenshots/pge-green-button.png" width="500" alt="PG&E Green Button download button" />
+  <br />
+  <em>Look for the Green Button on your PG&E usage page</em>
 </p>
 
 Then upload both to Claude and ask:
