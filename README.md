@@ -26,6 +26,12 @@ That's the whole prompt. Upload your data, ask a question, and the tool walks yo
 3. Enter URL: `https://pge-energy-mcp.up.railway.app/mcp`
 4. Upload your PG&E data and ask away
 
+<p align="center">
+  <img src="screenshots/claude-add-connector.png" width="500" alt="Adding PG&E Energy MCP connector in Claude settings" />
+  <br />
+  <em>Add the connector in Claude settings — takes 30 seconds</em>
+</p>
+
 Also works with **Claude Desktop** and as a **standalone web app** — see [Setup](#setup).
 
 ### See it in action
