@@ -19,7 +19,15 @@
 
 That's the whole prompt. Upload your data, ask a question, and the tool walks you through everything — detecting your solar system, asking about your battery, comparing rate plans, and finding where you're leaving money on the table.
 
-Works with **Claude Desktop**, **claude.ai**, or as a **standalone web app**.
+### Try it now on claude.ai
+
+1. Go to [claude.ai](https://claude.ai) > Settings > Integrations > Add MCP Server
+2. Add this URL: `https://pge-energy-mcp.up.railway.app/mcp`
+3. Upload your PG&E data and ask away
+
+<!-- TODO: Add screenshot of adding MCP server in claude.ai settings -->
+
+Also works with **Claude Desktop** and as a **standalone web app** — see [Setup](#setup).
 
 ---
 
