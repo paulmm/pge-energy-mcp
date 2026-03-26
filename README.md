@@ -65,49 +65,66 @@ This tool encodes all of that complexity so Claude gives you **accurate, persona
 
 ## How It Works
 
+### Step 1: Upload your PG&E data
+
+Go to [pge.com](https://www.pge.com) and download two things:
+
+| What to download | Where to find it |
+|---|---|
+| **Green Button data** | Account > Energy Usage > Green Button > **"Export My Data"** or **"Export Bill Totals"** |
+| **Latest bill (PDF)** | Account > Billing > **View/Download Bill** |
+
+<!-- TODO: Add screenshot of PG&E download page -->
+
+Then upload both to Claude and ask:
+
+> **"Here is my PG&E data and latest bill. Help me optimize my energy costs."**
+
+### Step 2: The tool takes it from there
+
 ```
-Upload PG&E data
-       |
-       v
-  Solar detected -----> No solar? Still analyzes usage
-       |                 and finds best rate plan
-       v
-  "Do you have a battery?"
-       |
-       v
-  "What rate plan are you on?"
-       |
-       v
-  "NEM 2.0 or 3.0?"
-       |
-       v
-  Full analysis: rate comparison, usage profile,
-  true-up projection, optimization recommendations
+  Green Button data           Latest PG&E bill (PDF)
+        |                              |
+        v                              v
+  Parse usage data              Read rate plan, NEM version,
+  Detect solar exports          provider, vintage, income tier
+        |                              |
+        +--------- Combined ----------+
+                      |
+                      v
+              "Do you have a battery?"
+              (Tesla Powerwall, Enphase, etc.)
+                      |
+                      v
+              Full analysis: rate comparison,
+              usage profile, true-up projection,
+              battery optimization, NEM transition impact
 ```
+
+Your bill tells us everything we need — rate schedule, whether you're bundled PG&E or with a CCA like Peninsula Clean Energy, your NEM version, PCIA vintage, and income tier. No need to look any of that up yourself.
+
+### Step 3: Get battery data (if applicable)
+
+If you have a Tesla Powerwall, there are two ways to get battery data:
+
+| Option | How | What you get |
+|--------|-----|-------------|
+| **Quick** | Tesla app > Settings > Energy Data > **Download My Data** | Monthly summaries |
+| **Detailed** | Run [tesla-solar-download](https://github.com/netzero-labs/tesla-solar-download) | 5-minute power data going back to installation |
+
+The detailed option shows exactly when your battery charges and discharges — catches issues that monthly summaries miss.
 
 ### Example Prompts
 
 | What you want to know | What to ask |
 |---|---|
-| Best overall optimization | *"Here is my Green Button data. What are the best ways to optimize my energy usage?"* |
+| Best overall optimization | *"Here is my PG&E data and bill. What are the best ways to optimize my energy usage?"* |
 | Rate plan check | *"Am I on the right rate plan?"* |
 | NEM transition impact | *"My NEM 2 grandfathering expires next year. How much more will I pay?"* |
 | True-up forecast | *"What will my true-up bill be this year?"* |
 | Battery ROI | *"Would adding a second Powerwall save me money?"* |
 | Battery scheduling | *"When should I charge and discharge my Powerwall to minimize costs?"* |
-
----
-
-## Get Your PG&E Data
-
-| Source | Where to find it | What it gives you |
-|--------|-------------------|-------------------|
-| **Green Button** (hourly) | [pge.com](https://www.pge.com) > Account > Energy Usage > Green Button > **"Export My Data"** | Hourly import/export for up to 13 months (~8,760 rows). Best for detailed analysis |
-| **Green Button** (billing) | Same page > **"Export Bill Totals"** | Monthly summaries. Good for trends and year-over-year comparison |
-| **Tesla** | Tesla app > Settings > Energy Data > **Download My Data** | Solar production, battery dispatch, home usage, grid flow |
-| **Share My Data API** | [PG&E Share My Data](https://sharemydata.pge.com) | Automatic ongoing data access via OAuth |
-
-Both Green Button formats are auto-detected — upload whichever you have.
+| Live Powerwall control | *"Set my Powerwall to autonomous mode and enable grid charging"* |
 
 ---
 
@@ -183,6 +200,21 @@ The included `Procfile` runs the MCP server on Railway's assigned port.
 | **Battery optimization** | Mathematically optimal charge/discharge schedule (Pyomo MILP solver) | *"When should my Powerwall charge?"* |
 | **System simulator** | Model adding panels, batteries, or changing dispatch strategy | *"Would more solar panels help?"* |
 | **Seasonal strategy** | Season-specific recommendations for TOU shifting and battery use | *"How should I prepare for summer?"* |
+
+### Powerwall Control
+
+If you have a Tesla Powerwall, the tool can read live status and control your battery directly:
+
+| Tool | What it does |
+|------|-------------|
+| **Live status** | Real-time power flow (solar, battery, grid, home), battery %, grid status |
+| **Battery details** | Per-battery health, temperatures, solar string diagnostics |
+| **Set mode** | Switch between self-consumption, autonomous (TOU optimization), and backup |
+| **Set reserve** | Adjust backup reserve percentage (0-100%) |
+| **Grid charging** | Enable/disable charging from the grid (key for TOU arbitrage) |
+| **Grid export** | Control export behavior — battery+solar, solar only, or never |
+
+Requires [pypowerwall](https://github.com/jasonacox/pypowerwall) in Cloud or FleetAPI mode. Local Gateway mode is read-only.
 
 ### Rate Engine
 
