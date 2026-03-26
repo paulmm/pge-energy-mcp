@@ -9,7 +9,6 @@
 
 <p align="center">
   <a href="#how-it-works">How It Works</a> &nbsp;&bull;&nbsp;
-  <a href="#get-your-pge-data">Get Your Data</a> &nbsp;&bull;&nbsp;
   <a href="#setup">Setup</a> &nbsp;&bull;&nbsp;
   <a href="#whats-inside">What's Inside</a>
 </p>
