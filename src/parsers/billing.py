@@ -218,12 +218,9 @@ def _suggest_next_steps(bills: list, is_gas: bool, has_solar: bool) -> list:
         })
         steps.append({
             "action": "ask_user",
-            "message": "What rate plan are you on? (e.g., EV2-A, E-ELEC, E-TOU-C, E-TOU-D) And are you with a Community Choice provider like Peninsula Clean Energy (PCE), SJCE, SVCE, etc. — or bundled with PG&E?",
-            "why": "Your rate plan determines TOU pricing. We can compare all available plans for your usage pattern.",
-        })
-        steps.append({
-            "action": "ask_user",
-            "message": "Are you on NEM 2.0 or NEM 3.0? (NEM 2 if solar was installed before April 2023, NEM 3 if after.) We can analyze the financial impact of the NEM transition on your system.",
+            "message": "Upload your latest PG&E bill (PDF or screenshot). We can read your rate plan, NEM version, provider, PCIA vintage, and income tier directly from the bill — no need to look them up yourself.",
+            "why": "Your PG&E bill contains all the plan details we need: rate schedule (e.g. EV2-A), whether you're with a CCA like PCE or bundled PG&E, your PCIA vintage year, NEM version, and income tier for base services charges.",
+            "fallback": "If you don't have your bill handy, just tell us: What rate plan are you on? (e.g., EV2-A, E-ELEC, E-TOU-C, E-TOU-D) Are you bundled PG&E or with a CCA provider?",
         })
         steps.append({
             "action": "ask_user",
@@ -237,7 +234,7 @@ def _suggest_next_steps(bills: list, is_gas: bool, has_solar: bool) -> list:
         })
         steps.append({
             "action": "ask_user",
-            "message": "What rate plan are you on? (e.g., EV2-A, E-ELEC, E-TOU-C, E-TOU-D) We can check if a different plan would save you money based on your usage pattern.",
+            "message": "Upload your latest PG&E bill (PDF or screenshot) so we can identify your rate plan and check if a different plan would save you money. Or just tell us your rate plan (e.g., EV2-A, E-ELEC, E-TOU-C, E-TOU-D).",
         })
 
     return steps

@@ -111,6 +111,103 @@ async def parse_tesla_power(csv_content: str) -> dict:
 
 
 @mcp.tool()
+async def extract_bill_details(
+    schedule: str,
+    provider: str = "PGE_BUNDLED",
+    vintage_year: int | None = None,
+    income_tier: int = 3,
+    nem_version: str = "NEM2",
+    true_up_month: int | None = None,
+) -> dict:
+    """
+    Validate and look up rates from details extracted from a PG&E bill.
+
+    After the user uploads a PG&E bill (PDF or screenshot), extract these details
+    from the bill and pass them to this tool for validation and rate lookup:
+
+    How to find each field on the bill:
+    - schedule: Look for "Rate Schedule" or "Schedule" (e.g., "EV2-A", "E-ELEC")
+    - provider: If bill has a separate CCA section (e.g., "Peninsula Clean Energy"),
+      use that CCA code. If only PG&E charges, use "PGE_BUNDLED"
+    - vintage_year: Found in the PCIA line item (e.g., "Vintage 2016"). Only for CCA.
+    - income_tier: "Tier 1" = CARE, "Tier 2" = FERA, "Tier 3" = standard. Look at
+      the Base Services Charge line.
+    - nem_version: "Net Energy Metering" section = NEM2. "Net Billing" = NEM3.
+      If no NEM section, customer doesn't have solar.
+    - true_up_month: Look for "True-Up Date" or "Anniversary Date" on the NEM page.
+
+    Args:
+        schedule: Rate schedule from bill (EV2-A, E-ELEC, E-TOU-C, E-TOU-D)
+        provider: PGE_BUNDLED, PCE, SVCE, MCE, SJCE, or EBCE
+        vintage_year: PCIA vintage year (CCA customers only, None for bundled)
+        income_tier: 1 (CARE), 2 (FERA), or 3 (standard)
+        nem_version: NEM2 or NEM3
+        true_up_month: Month number of annual true-up (1-12)
+
+    Returns:
+        Validated rate details with effective rates, plan summary, and suggested
+        next analysis steps based on the customer's specific configuration.
+    """
+    from src.rates.engine import lookup_rates
+
+    if provider == "PGE_BUNDLED":
+        vintage_year = None
+
+    try:
+        rates = lookup_rates(
+            schedule, provider,
+            vintage_year=vintage_year or 2016,
+            income_tier=income_tier,
+        )
+    except ValueError as e:
+        return {"error": str(e)}
+
+    plan_summary = {
+        "schedule": schedule,
+        "provider": provider,
+        "vintage_year": vintage_year,
+        "income_tier": income_tier,
+        "nem_version": nem_version,
+        "true_up_month": true_up_month,
+        "base_services_charge_daily": rates["base_services_charge_daily"],
+        "base_services_charge_monthly": round(rates["base_services_charge_daily"] * 30.4, 2),
+    }
+
+    suggestions = []
+    if nem_version == "NEM2":
+        suggestions.append(
+            "You're on NEM 2.0 — your export credits are at full retail rate. "
+            "We can project what happens when grandfathering expires using compare_nem_versions."
+        )
+    elif nem_version == "NEM3":
+        suggestions.append(
+            "You're on NEM 3.0 — export credits are based on the hourly Avoided Cost Calculator. "
+            "Self-consumption is worth 5-15x more than exporting. Battery optimization is key."
+        )
+
+    if schedule != "EV2-A":
+        suggestions.append(
+            f"You're on {schedule}. We can compare this against EV2-A and other plans "
+            f"using your actual usage data to see if switching would save money."
+        )
+
+    if income_tier == 3:
+        bsc = rates["base_services_charge_daily"]
+        suggestions.append(
+            f"Standard tier BSC is ${bsc:.2f}/day (${bsc * 365:.0f}/yr). "
+            f"If you qualify for CARE or FERA, the savings are significant."
+        )
+
+    return {
+        "plan": plan_summary,
+        "effective_rates": rates["effective_rates"],
+        "components": rates["components"],
+        "tou_windows": rates["tou_windows"],
+        "suggestions": suggestions,
+    }
+
+
+@mcp.tool()
 async def get_rates(
     schedule: str,
     provider: str = "PGE_BUNDLED",
