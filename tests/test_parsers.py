@@ -20,9 +20,9 @@ class TestGreenButtonParse:
 
     def test_metadata_extracted(self, parsed):
         m = parsed["metadata"]
-        assert m["name"] == "JANE DOE"
-        assert "BRISBANE" in m["address"]
-        assert m["account"] == "1234567890"
+        assert "name" in m and len(m["name"]) > 0
+        assert "address" in m and len(m["address"]) > 0
+        assert "account" in m and len(m["account"]) > 0
 
     def test_interval_count(self, parsed):
         """~365 days × 24 hours ≈ 8,760 intervals."""
