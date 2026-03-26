@@ -85,6 +85,32 @@ async def parse_tesla_export(csv_content: str, export_type: str = "year") -> dic
 
 
 @mcp.tool()
+async def parse_tesla_power(csv_content: str) -> dict:
+    """
+    Parse Tesla 5-minute power data from tesla-solar-download tool.
+
+    This is for granular power data (5-minute intervals with watts for solar,
+    battery, grid, and home) downloaded using the tesla-solar-download tool
+    (https://github.com/netzero-labs/tesla-solar-download).
+
+    Much more detailed than the Tesla app CSV export — shows exactly when your
+    battery charges/discharges, solar ramps, and grid import spikes happen.
+
+    The CSV has columns: timestamp, solar_power, battery_power, grid_power, load_power
+    All values in watts. You can paste one day's file or concatenate multiple days.
+
+    Args:
+        csv_content: Raw CSV text from tesla-solar-download output
+
+    Returns:
+        Dict with 5-min intervals, hourly aggregates, daily summaries,
+        battery health metrics, self-consumption %, and analysis suggestions
+    """
+    from src.parsers.tesla_power import parse
+    return parse(csv_content)
+
+
+@mcp.tool()
 async def get_rates(
     schedule: str,
     provider: str = "PGE_BUNDLED",
@@ -405,19 +431,138 @@ async def delete_system_config(config_id: str) -> dict:
 
 
 @mcp.tool()
-async def powerwall_status() -> dict:
+async def powerwall_live() -> dict:
     """
-    Get real-time Powerwall status via Tesla FleetAPI.
+    Get real-time Powerwall status: power flow, battery level, grid status.
 
-    Requires TESLA_FLEET_TOKEN environment variable. Returns battery level,
-    power flow, grid status, and operating mode.
+    Shows what's happening right now — solar production, battery charge/discharge,
+    grid import/export, home consumption, operating mode, and backup reserve.
+
+    Requires pypowerwall configuration (see error message for setup instructions).
+    Supports local Gateway connection (read-only) or Cloud/FleetAPI (read + control).
 
     Returns:
-        Dict with battery_pct, power_flow (solar, battery, grid, home watts),
-        grid_status, operating_mode, or error if not configured.
+        Dict with power_flow (watts), battery_pct, grid_status, operating_mode,
+        backup_reserve_pct, alerts, firmware version, or setup instructions.
     """
-    from src.integrations.tesla import get_powerwall_status
-    return get_powerwall_status()
+    from src.integrations.powerwall import get_live_status
+    return get_live_status()
+
+
+@mcp.tool()
+async def powerwall_details() -> dict:
+    """
+    Get detailed Powerwall diagnostics: per-battery health, temps, string data.
+
+    Shows per-battery block state of charge, temperatures, and solar string
+    performance (voltage, current, power per string). Useful for diagnosing
+    issues like a non-functioning battery or underperforming solar strings.
+
+    Returns:
+        Dict with battery_blocks, temperatures, vitals, or error if not configured.
+    """
+    from src.integrations.powerwall import get_battery_details
+    return get_battery_details()
+
+
+@mcp.tool()
+async def set_powerwall_mode(mode: str) -> dict:
+    """
+    Change Powerwall operating mode.
+
+    Modes:
+    - "self_consumption" — Use solar+battery first, minimize grid interaction
+    - "autonomous" — Optimize for TOU savings (charge off-peak, discharge peak)
+    - "backup" — Maximize battery reserve for power outages
+
+    For TOU rate arbitrage (charge cheap overnight, discharge during peak 4-9 PM),
+    use "autonomous" mode with grid charging enabled.
+
+    Only works with Cloud or FleetAPI connection (not local Gateway).
+
+    Args:
+        mode: "self_consumption", "autonomous", or "backup"
+
+    Returns:
+        Success confirmation or error with setup instructions.
+    """
+    from src.integrations.powerwall import set_mode
+    return set_mode(mode)
+
+
+@mcp.tool()
+async def set_powerwall_reserve(level: float) -> dict:
+    """
+    Set Powerwall backup reserve percentage.
+
+    Controls how much battery capacity is held in reserve for power outages.
+    - 0% = Use all battery for TOU optimization (no outage backup)
+    - 20% = Keep 2.7 kWh reserved per Powerwall 2 for outages
+    - 100% = Full backup mode, no TOU optimization
+
+    For maximum cost savings, set reserve to 0-20% and let the optimizer
+    handle TOU dispatch. Increase before storms or planned outages.
+
+    Only works with Cloud or FleetAPI connection.
+
+    Args:
+        level: Reserve percentage (0-100)
+
+    Returns:
+        Success confirmation or error.
+    """
+    from src.integrations.powerwall import set_reserve
+    return set_reserve(level)
+
+
+@mcp.tool()
+async def set_powerwall_grid_charging(enabled: bool) -> dict:
+    """
+    Enable or disable Powerwall charging from the grid.
+
+    When enabled, the Powerwall can charge from grid power (typically overnight
+    during off-peak TOU hours) and discharge during peak hours. This is the key
+    unlock for TOU arbitrage — the battery buys cheap power and sells it back
+    during expensive hours.
+
+    When disabled, the battery only charges from solar.
+
+    Only works with Cloud or FleetAPI connection.
+
+    Args:
+        enabled: True to allow grid charging, False for solar-only charging
+
+    Returns:
+        Success confirmation or error.
+    """
+    from src.integrations.powerwall import set_grid_charging
+    return set_grid_charging(enabled)
+
+
+@mcp.tool()
+async def set_powerwall_grid_export(mode: str) -> dict:
+    """
+    Configure how the Powerwall exports to the grid.
+
+    Modes:
+    - "battery_ok" — Export from battery when charged (default)
+    - "pv_only" — Only export excess solar, never battery
+    - "never" — No grid export at all
+
+    Under NEM 2.0, "battery_ok" makes sense (full retail credit for exports).
+    Under NEM 3.0, "pv_only" or "never" may be better since export credits
+    are much lower — keep battery energy for self-consumption instead.
+
+    Only works with Cloud or FleetAPI connection.
+
+    Args:
+        mode: "battery_ok", "pv_only", or "never"
+
+    Returns:
+        Success confirmation or error.
+    """
+    from src.integrations.powerwall import set_grid_export
+    return set_grid_export(mode)
 
 
 @mcp.tool()

@@ -211,7 +211,10 @@ def _suggest_next_steps(bills: list, is_gas: bool, has_solar: bool) -> list:
         })
         steps.append({
             "action": "ask_user",
-            "message": "Do you have a battery system (e.g., Tesla Powerwall, Enphase, Franklin)? If so, upload your battery/solar data — for Tesla, go to the Tesla app > Settings > Energy Data > Download My Data. Battery data lets us analyze how well your system dispatches stored energy vs exporting to the grid.",
+            "message": "Do you have a battery system (e.g., Tesla Powerwall, Enphase, Franklin)? If you have a Tesla Powerwall, there are two ways to get battery data:\n\n"
+                       "1. **Quick:** Tesla app > Settings > Energy Data > Download My Data (monthly summaries)\n"
+                       "2. **Detailed (recommended):** Use tesla-solar-download (github.com/netzero-labs/tesla-solar-download) to pull 5-minute power data going back to installation. This shows exactly when your battery charges/discharges and catches issues the app summary misses.\n\n"
+                       "Upload either format and we'll analyze your battery performance.",
         })
         steps.append({
             "action": "ask_user",

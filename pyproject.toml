@@ -24,7 +24,10 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "httpx>=0.27.0",
 ]
-phase2 = [
+powerwall = [
+    "pypowerwall>=0.10.0",
+]
+integrations = [
     "pypowerwall>=0.10.0",
     "solcast>=1.0.0",
 ]
