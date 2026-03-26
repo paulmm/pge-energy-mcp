@@ -21,13 +21,26 @@ That's the whole prompt. Upload your data, ask a question, and the tool walks yo
 
 ### Try it now on claude.ai
 
-1. Go to [claude.ai](https://claude.ai) > Settings > Integrations > Add MCP Server
-2. Add this URL: `https://pge-energy-mcp.up.railway.app/mcp`
-3. Upload your PG&E data and ask away
-
-<!-- TODO: Add screenshot of adding MCP server in claude.ai settings -->
+1. Go to [claude.ai/settings/connectors](https://claude.ai/settings/connectors)
+2. Click **Add custom connector**, name it `pge-energy-mcp`
+3. Enter URL: `https://pge-energy-mcp.up.railway.app/mcp`
+4. Upload your PG&E data and ask away
 
 Also works with **Claude Desktop** and as a **standalone web app** — see [Setup](#setup).
+
+### See it in action
+
+<p align="center">
+  <img src="screenshots/claude-billing-analysis.png" width="600" alt="PG&E billing analysis in Claude — rate comparison, usage breakdown, and optimization recommendations" />
+  <br />
+  <em>Upload your Green Button data and bill — get rate comparisons, usage breakdown, and actionable recommendations</em>
+</p>
+
+<p align="center">
+  <img src="screenshots/claude-tesla-analysis.png" width="600" alt="Tesla Powerwall analysis in Claude — battery performance, solar production, and dispatch optimization" />
+  <br />
+  <em>Add Tesla data for battery performance analysis, solar production tracking, and dispatch optimization</em>
+</p>
 
 ---
 
@@ -81,7 +94,9 @@ Go to [pge.com](https://www.pge.com) and download two things:
 | **Green Button data** | Account > Energy Usage > Green Button > **"Export My Data"** or **"Export Bill Totals"** |
 | **Latest bill (PDF)** | Account > Billing > **View/Download Bill** |
 
-<!-- TODO: Add screenshot of PG&E download page -->
+<p align="center">
+  <img src="screenshots/pge-usage-page.png" width="300" alt="PG&E energy usage page — where to find Green Button download" />
+</p>
 
 Then upload both to Claude and ask:
 
