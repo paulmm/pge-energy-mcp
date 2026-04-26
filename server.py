@@ -20,13 +20,56 @@ from src.data.system_config import SystemConfig
 _icon_bytes = (Path(__file__).parent / "assets" / "icon.svg").read_bytes()
 _icon_data_uri = f"data:image/svg+xml;base64,{base64.b64encode(_icon_bytes).decode()}"
 
+INSTRUCTIONS = """\
+PG&E solar + battery energy analyzer. Helps residential customers in PG&E
+territory answer: "Am I on the right rate plan and using my system optimally?"
+
+TYPICAL FLOW
+1. User uploads PG&E Green Button CSV. Pick the right parser:
+   - parse_green_button: hourly intervals (~8,760 rows/year, "Export My Data")
+   - parse_billing_data: monthly bill totals ("Export Bill Totals")
+2. After parsing, check the parser's `next_steps` field — it tells you what to
+   ask the user next based on what was detected.
+3. If solar exports exist (export_kwh > 0), the user HAS solar. Do not ask
+   "do you have solar?" — instead ask about their battery (Tesla Powerwall, etc.)
+   and request their latest PG&E bill PDF.
+4. Read the bill PDF directly to extract: rate schedule (EV2-A, E-ELEC, E-TOU-C,
+   E-TOU-D), provider (PG&E bundled vs CCA like PCE/MCE/SVCE), NEM version
+   (NEM 2.0 or 3.0), PCIA vintage year, income tier. Pass to extract_bill_details
+   to validate against the rate engine.
+5. Run analysis tools: compare_plans, usage_profile, nem_projection, etc.
+
+KEY DOMAIN RULES
+- Effective rate for CCA customer = pge_delivery + cca_generation + pcia_vintage.
+  Never quote PG&E bundled rates for CCA customers — that's the most common error.
+- PG&E bills show DELIVERY rates in the NEM section, not total. The total rate
+  includes CCA generation and PCIA on top.
+- NEM 2.0 customers get full retail export credit. NEM 3.0 uses ACC values
+  ($0.04-0.10/kWh average) — self-consumption is 5-15x more valuable than export.
+- The true-up IS the bill. Monthly NEM charges accumulate; annual settlement is
+  when the big bill arrives. Don't project monthly bills as annual costs.
+- Rate plan switches mid-cycle trigger early true-up — warn users before recommending.
+
+SUPPORTED RATES (verified March 2026 tariff)
+- EV2-A, E-ELEC: peak 4-9PM every day, partial-peak 3-4PM & 9PM-midnight
+- E-TOU-C: peak 4-9PM every day (two-period, baseline-tiered)
+- E-TOU-D: peak 5-8PM weekdays only
+
+POWERWALL CONTROL
+The set_powerwall_* tools change real Tesla battery state via FleetAPI.
+Confirm with the user before invoking — these are not simulations.
+"""
+
 mcp = FastMCP(
     "PG&E Energy Analyzer",
+    instructions=INSTRUCTIONS,
+    version="1.0.0",
+    website_url="https://github.com/Proprius-Labs/PGE-Energy-MCP",
     icons=[Icon(src=_icon_data_uri, mimeType="image/svg+xml")],
 )
 
 
-@mcp.tool(annotations={"title": "Parse Green Button (hourly)", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"ingestion", "green-button"}, annotations={"title": "Parse Green Button (hourly)", "readOnlyHint": True, "openWorldHint": False})
 async def parse_green_button(csv_content: str) -> dict:
     """
     Parse PG&E Green Button CSV with HOURLY interval data (~8,760 rows/year).
@@ -49,7 +92,7 @@ async def parse_green_button(csv_content: str) -> dict:
     return parse(csv_content)
 
 
-@mcp.tool(annotations={"title": "Parse Green Button (bill totals)", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"ingestion", "billing"}, annotations={"title": "Parse Green Button (bill totals)", "readOnlyHint": True, "openWorldHint": False})
 async def parse_billing_data(csv_content: str) -> dict:
     """
     Parse PG&E Green Button "Bill Totals" CSV export into monthly billing data.
@@ -75,7 +118,7 @@ async def parse_billing_data(csv_content: str) -> dict:
     return parse(csv_content)
 
 
-@mcp.tool(annotations={"title": "Parse Tesla monthly export", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"ingestion", "tesla"}, annotations={"title": "Parse Tesla monthly export", "readOnlyHint": True, "openWorldHint": False})
 async def parse_tesla_export(csv_content: str, export_type: str = "year") -> dict:
     """
     Parse Tesla app energy data CSV export.
@@ -93,7 +136,7 @@ async def parse_tesla_export(csv_content: str, export_type: str = "year") -> dic
     return parse(csv_content, export_type)
 
 
-@mcp.tool(annotations={"title": "Parse Tesla 5-min power data", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"ingestion", "tesla", "battery"}, annotations={"title": "Parse Tesla 5-min power data", "readOnlyHint": True, "openWorldHint": False})
 async def parse_tesla_power(csv_content: str) -> dict:
     """
     Parse Tesla 5-minute power data from tesla-solar-download tool.
@@ -119,7 +162,7 @@ async def parse_tesla_power(csv_content: str) -> dict:
     return parse(csv_content)
 
 
-@mcp.tool(annotations={"title": "Extract PG&E bill details", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"ingestion", "billing", "rates"}, annotations={"title": "Extract PG&E bill details", "readOnlyHint": True, "openWorldHint": False})
 async def extract_bill_details(
     schedule: str,
     provider: str = "PGE_BUNDLED",
@@ -216,7 +259,7 @@ async def extract_bill_details(
     }
 
 
-@mcp.tool(annotations={"title": "Get PG&E rate lookup", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"rates"}, annotations={"title": "Get PG&E rate lookup", "readOnlyHint": True, "openWorldHint": False})
 async def get_rates(
     schedule: str,
     provider: str = "PGE_BUNDLED",
@@ -243,7 +286,7 @@ async def get_rates(
     return lookup_rates(schedule, provider, vintage_year, income_tier)
 
 
-@mcp.tool(annotations={"title": "Compare rate plans", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis", "rates"}, annotations={"title": "Compare rate plans", "readOnlyHint": True, "openWorldHint": False})
 async def compare_plans(
     interval_data: list[dict],
     plans: list[dict],
@@ -272,7 +315,7 @@ async def compare_plans(
     return compare(interval_data, plans, nem_version)
 
 
-@mcp.tool(annotations={"title": "Profile energy usage", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis"}, annotations={"title": "Profile energy usage", "readOnlyHint": True, "openWorldHint": False})
 async def usage_profile(interval_data: list[dict], config_id: str = None) -> dict:
     """
     Generate a comprehensive usage profile from hourly interval data.
@@ -290,7 +333,7 @@ async def usage_profile(interval_data: list[dict], config_id: str = None) -> dic
     return profile(interval_data)
 
 
-@mcp.tool(annotations={"title": "Simulate system expansion", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis", "simulation"}, annotations={"title": "Simulate system expansion", "readOnlyHint": True, "openWorldHint": False})
 async def simulate_system(
     interval_data: list[dict],
     system_config: dict,
@@ -333,7 +376,7 @@ async def simulate_system(
     return simulate(interval_data, system_config, rate_config, nem_version)
 
 
-@mcp.tool(annotations={"title": "Seasonal strategy advisor", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis", "battery"}, annotations={"title": "Seasonal strategy advisor", "readOnlyHint": True, "openWorldHint": False})
 async def seasonal_strategy(
     interval_data: list[dict],
     rate_config: dict,
@@ -364,7 +407,7 @@ async def seasonal_strategy(
     return compute(interval_data, rate_config, system_config)
 
 
-@mcp.tool(annotations={"title": "Project NEM true-up", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis", "nem", "billing"}, annotations={"title": "Project NEM true-up", "readOnlyHint": True, "openWorldHint": False})
 async def nem_projection(
     interval_data: list[dict],
     plan: dict,
@@ -402,7 +445,7 @@ async def nem_projection(
     return project_trueup(interval_data, plan, nem_version, true_up_month)
 
 
-@mcp.tool(annotations={"title": "Compare NEM 2.0 vs 3.0", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis", "nem"}, annotations={"title": "Compare NEM 2.0 vs 3.0", "readOnlyHint": True, "openWorldHint": False})
 async def compare_nem_versions(
     interval_data: list[dict],
     plan: dict,
@@ -444,7 +487,7 @@ def _load_config(config_id: str) -> dict:
 # ── System Config Persistence Tools ──────────────────────────────────
 
 
-@mcp.tool(annotations={"title": "Save system config", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False})
+@mcp.tool(tags={"config"}, annotations={"title": "Save system config", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False})
 async def save_system_config(config_id: str, config: dict) -> dict:
     """
     Save a system configuration for later use.
@@ -467,7 +510,7 @@ async def save_system_config(config_id: str, config: dict) -> dict:
     return store.save(config_id, config)
 
 
-@mcp.tool(annotations={"title": "Get system config", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"config"}, annotations={"title": "Get system config", "readOnlyHint": True, "openWorldHint": False})
 async def get_system_config(config_id: str) -> dict:
     """
     Retrieve a stored system configuration.
@@ -486,7 +529,7 @@ async def get_system_config(config_id: str) -> dict:
     return result
 
 
-@mcp.tool(annotations={"title": "Update system config", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False})
+@mcp.tool(tags={"config"}, annotations={"title": "Update system config", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": False})
 async def update_system_config(config_id: str, updates: dict) -> dict:
     """
     Partially update a stored system configuration.
@@ -509,7 +552,7 @@ async def update_system_config(config_id: str, updates: dict) -> dict:
     return result
 
 
-@mcp.tool(annotations={"title": "List system configs", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"config"}, annotations={"title": "List system configs", "readOnlyHint": True, "openWorldHint": False})
 async def list_system_configs() -> dict:
     """
     List all stored system configurations.
@@ -521,7 +564,7 @@ async def list_system_configs() -> dict:
     return {"configs": store.list_all()}
 
 
-@mcp.tool(annotations={"title": "Delete system config", "readOnlyHint": False, "destructiveHint": True, "idempotentHint": True, "openWorldHint": False})
+@mcp.tool(tags={"config"}, annotations={"title": "Delete system config", "readOnlyHint": False, "destructiveHint": True, "idempotentHint": True, "openWorldHint": False})
 async def delete_system_config(config_id: str) -> dict:
     """
     Delete a stored system configuration.
@@ -536,7 +579,7 @@ async def delete_system_config(config_id: str) -> dict:
     return store.delete(config_id)
 
 
-@mcp.tool(annotations={"title": "Powerwall live status", "readOnlyHint": True, "openWorldHint": True})
+@mcp.tool(tags={"powerwall", "tesla", "live"}, annotations={"title": "Powerwall live status", "readOnlyHint": True, "openWorldHint": True})
 async def powerwall_live() -> dict:
     """
     Get real-time Powerwall status: power flow, battery level, grid status.
@@ -555,7 +598,7 @@ async def powerwall_live() -> dict:
     return get_live_status()
 
 
-@mcp.tool(annotations={"title": "Powerwall battery details", "readOnlyHint": True, "openWorldHint": True})
+@mcp.tool(tags={"powerwall", "tesla", "live"}, annotations={"title": "Powerwall battery details", "readOnlyHint": True, "openWorldHint": True})
 async def powerwall_details() -> dict:
     """
     Get detailed Powerwall diagnostics: per-battery health, temps, string data.
@@ -571,7 +614,7 @@ async def powerwall_details() -> dict:
     return get_battery_details()
 
 
-@mcp.tool(annotations={"title": "Set Powerwall operating mode", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(tags={"powerwall", "tesla", "control"}, annotations={"title": "Set Powerwall operating mode", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 async def set_powerwall_mode(mode: str) -> dict:
     """
     Change Powerwall operating mode.
@@ -596,7 +639,7 @@ async def set_powerwall_mode(mode: str) -> dict:
     return set_mode(mode)
 
 
-@mcp.tool(annotations={"title": "Set Powerwall backup reserve", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(tags={"powerwall", "tesla", "control"}, annotations={"title": "Set Powerwall backup reserve", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 async def set_powerwall_reserve(level: float) -> dict:
     """
     Set Powerwall backup reserve percentage.
@@ -621,7 +664,7 @@ async def set_powerwall_reserve(level: float) -> dict:
     return set_reserve(level)
 
 
-@mcp.tool(annotations={"title": "Set Powerwall grid charging", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(tags={"powerwall", "tesla", "control"}, annotations={"title": "Set Powerwall grid charging", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 async def set_powerwall_grid_charging(enabled: bool) -> dict:
     """
     Enable or disable Powerwall charging from the grid.
@@ -645,7 +688,7 @@ async def set_powerwall_grid_charging(enabled: bool) -> dict:
     return set_grid_charging(enabled)
 
 
-@mcp.tool(annotations={"title": "Set Powerwall grid export", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(tags={"powerwall", "tesla", "control"}, annotations={"title": "Set Powerwall grid export", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 async def set_powerwall_grid_export(mode: str) -> dict:
     """
     Configure how the Powerwall exports to the grid.
@@ -671,7 +714,7 @@ async def set_powerwall_grid_export(mode: str) -> dict:
     return set_grid_export(mode)
 
 
-@mcp.tool(annotations={"title": "Solar production forecast", "readOnlyHint": True, "openWorldHint": True})
+@mcp.tool(tags={"analysis", "external-api", "solar"}, annotations={"title": "Solar production forecast", "readOnlyHint": True, "openWorldHint": True})
 async def solar_forecast(
     latitude: float = 37.68,
     longitude: float = -122.40,
@@ -696,7 +739,7 @@ async def solar_forecast(
     return get_solar_forecast(latitude, longitude, capacity_kw)
 
 
-@mcp.tool(annotations={"title": "Optimize battery dispatch", "readOnlyHint": True, "openWorldHint": False})
+@mcp.tool(tags={"analysis", "battery", "optimization"}, annotations={"title": "Optimize battery dispatch", "readOnlyHint": True, "openWorldHint": False})
 async def optimize_battery(
     interval_data: list[dict],
     system_config: dict,
@@ -739,7 +782,7 @@ async def optimize_battery(
 # ── PG&E Share My Data (Green Button Connect) Tools ─────────────────
 
 
-@mcp.tool(annotations={"title": "Initiate PG&E connection", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
+@mcp.tool(tags={"external-api", "pge", "auth"}, annotations={"title": "Initiate PG&E connection", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": True, "openWorldHint": True})
 async def connect_pge(config_id: str) -> dict:
     """
     Start PG&E Share My Data OAuth connection to auto-fetch interval usage data.
@@ -758,7 +801,7 @@ async def connect_pge(config_id: str) -> dict:
     return generate_auth_url(config_id)
 
 
-@mcp.tool(annotations={"title": "Complete PG&E connection", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
+@mcp.tool(tags={"external-api", "pge", "auth"}, annotations={"title": "Complete PG&E connection", "readOnlyHint": False, "destructiveHint": False, "idempotentHint": False, "openWorldHint": True})
 async def complete_pge_connection(config_id: str, auth_code: str) -> dict:
     """
     Complete PG&E Share My Data connection by exchanging the authorization code.
@@ -801,7 +844,7 @@ async def complete_pge_connection(config_id: str, auth_code: str) -> dict:
     }
 
 
-@mcp.tool(annotations={"title": "Fetch PG&E usage data", "readOnlyHint": True, "openWorldHint": True})
+@mcp.tool(tags={"ingestion", "external-api", "pge"}, annotations={"title": "Fetch PG&E usage data", "readOnlyHint": True, "openWorldHint": True})
 async def fetch_pge_data(config_id: str, start_date: str, end_date: str) -> dict:
     """
     Fetch PG&E interval usage data via Share My Data API.
