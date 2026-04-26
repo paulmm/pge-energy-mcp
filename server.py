@@ -922,6 +922,18 @@ def create_combined_app():
     return root
 
 
+@mcp.custom_route("/favicon.ico", methods=["GET"])
+async def favicon(request):
+    from starlette.responses import Response
+    return Response(content=_icon_bytes, media_type="image/svg+xml")
+
+
+@mcp.custom_route("/icon.svg", methods=["GET"])
+async def icon_svg(request):
+    from starlette.responses import Response
+    return Response(content=_icon_bytes, media_type="image/svg+xml")
+
+
 # ASGI app for deployment (Railway, uvicorn, etc.)
 app = mcp.http_app()
 
