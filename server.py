@@ -8,13 +8,22 @@ Tools help PG&E residential customers answer:
 """
 
 from fastmcp import FastMCP
+from mcp.types import Icon
 from typing import Optional
+import base64
 import json
+from pathlib import Path
 
 from src.storage.config_store import get_store
 from src.data.system_config import SystemConfig
 
-mcp = FastMCP("PG&E Energy Analyzer")
+_icon_bytes = (Path(__file__).parent / "assets" / "icon.svg").read_bytes()
+_icon_data_uri = f"data:image/svg+xml;base64,{base64.b64encode(_icon_bytes).decode()}"
+
+mcp = FastMCP(
+    "PG&E Energy Analyzer",
+    icons=[Icon(src=_icon_data_uri, mimeType="image/svg+xml")],
+)
 
 
 @mcp.tool(annotations={"title": "Parse Green Button (hourly)", "readOnlyHint": True, "openWorldHint": False})
