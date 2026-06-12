@@ -50,6 +50,9 @@ KEY DOMAIN RULES
 - The true-up IS the bill. Monthly NEM charges accumulate; annual settlement is
   when the big bill arrives. Don't project monthly bills as annual costs.
 - Rate plan switches mid-cycle trigger early true-up — warn users before recommending.
+- Every get_rates/extract_bill_details result includes rates_meta. If
+  rates_meta.stale is true, tell the user the tariff data is dated and
+  absolute costs may drift; relative plan comparisons remain useful.
 
 SUPPORTED RATES (verified March 2026 tariff)
 - EV2-A, E-ELEC: peak 4-9PM every day, partial-peak 3-4PM & 9PM-midnight

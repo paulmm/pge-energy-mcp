@@ -115,6 +115,26 @@ class TestRateErrors:
             lookup_rates("EV2-A", "SVCE", 2017, 3)
 
 
+# ── Rate freshness ────────────────────────────────────────────────────
+
+
+class TestRateFreshness:
+    def test_lookup_includes_rates_meta(self):
+        r = lookup_rates("EV2-A", "PCE", 2016, 3)
+        meta = r["rates_meta"]
+        assert meta["last_updated"] == "2026-03-21"
+        assert isinstance(meta["age_days"], int)
+        assert isinstance(meta["stale"], bool)
+
+    def test_stale_flag_carries_warning(self):
+        from src.rates.engine import rates_freshness
+        meta = rates_freshness()
+        if meta["stale"]:
+            assert "warning" in meta
+        else:
+            assert "warning" not in meta
+
+
 # ── Provider coverage ─────────────────────────────────────────────────
 
 

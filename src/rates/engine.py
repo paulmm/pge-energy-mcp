@@ -8,10 +8,29 @@ is provided.
 from __future__ import annotations
 
 import json
+from datetime import date as _date
 from pathlib import Path
 
 _CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 _cache = {}
+
+
+def rates_freshness() -> dict:
+    """How fresh the loaded tariff data is. PG&E changes rates ~2x/year."""
+    meta = _load_json("pge_rates.json").get("_meta", {})
+    last_updated = meta.get("last_updated")
+    out = {"source": meta.get("source", ""), "last_updated": last_updated,
+           "age_days": None, "stale": False}
+    if last_updated:
+        age = (_date.today() - _date.fromisoformat(last_updated)).days
+        out["age_days"] = age
+        out["stale"] = age > 180
+        if out["stale"]:
+            out["warning"] = (
+                f"Rate data was last updated {last_updated} ({age} days ago). "
+                "PG&E and CCA rates change ~2x/year — absolute cost estimates "
+                "may be off. Plan-vs-plan comparisons are less sensitive.")
+    return out
 
 
 def _load_json(name: str) -> dict:
@@ -118,6 +137,7 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
             "base_services_charge_daily": bsc_daily,
             "tou_windows": sched["tou_windows"],
             "summer_months": sched["summer_months"],
+            "rates_meta": rates_freshness(),
         }
 
     # CCA customer
@@ -152,6 +172,7 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
         "base_services_charge_daily": bsc_daily,
         "tou_windows": sched["tou_windows"],
         "summer_months": sched["summer_months"],
+        "rates_meta": rates_freshness(),
     }
 
 
