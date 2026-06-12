@@ -105,6 +105,7 @@ def optimize_dispatch(
 
     # Rate lookup setup
     effective_rates = rate_config["effective_rates"]
+    nbc_per_kwh = rate_config.get("nbc_per_kwh", 0.0)
     schedule_config = {
         "tou_windows": rate_config["tou_windows"],
         "summer_months": rate_config["summer_months"],
@@ -144,13 +145,12 @@ def optimize_dispatch(
         import_rate_arr.append(rate)
 
         # Export credit depends on NEM version
-        if nem_version == "NEM2":
-            export_rate_arr.append(rate)  # full retail
-        elif nem_version == "NEM3":
+        if nem_version == "NEM3":
             from src.rates.nem import get_acc_rate
             export_rate_arr.append(get_acc_rate(hour, month))
         else:
-            export_rate_arr.append(rate)
+            # NEM2: retail minus non-bypassable charges
+            export_rate_arr.append(max(0.0, rate - nbc_per_kwh))
 
         # Annotate interval with TOU period for schedule formatter
         iv["tou_period"] = f"{season}_{period}"

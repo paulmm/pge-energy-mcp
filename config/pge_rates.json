@@ -5,6 +5,10 @@
     "last_updated": "2026-03-21",
     "notes": "Unbundled delivery rates (total bundled minus generation component). CCA customers pay these + their CCA generation rate + vintaged PCIA."
   },
+  "nbc": {
+    "per_kwh": 0.0345,
+    "_notes": "Non-bypassable charges (PPP + Nuclear Decommissioning + Wildfire Fund + CTC). Cannot be offset by NEM export credits. Derived from reference bill: NBC Net Usage Adjustment -$36.42 / 1056.64 kWh net = $0.0345/kWh. Verify against current PUC sheets ~2x/year."
+  },
   "schedules": {
     "EV2-A": {
       "name": "Home Charging EV2-A",

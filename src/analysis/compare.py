@@ -93,8 +93,9 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
 
         # Export credit
         if exp > 0:
-            credit = calculate_export_credit(exp, rate, nem_version,
-                                                    hour=hour, month=month)
+            credit = calculate_export_credit(
+                exp, rate, nem_version, hour=hour, month=month,
+                nbc_per_kwh=rate_info["nbc_per_kwh"])
             export_credit_by_period[f"{season}_{period}"] += credit
             export_kwh_by_period[f"{season}_{period}"] += exp
             season_export_credit[season] += credit

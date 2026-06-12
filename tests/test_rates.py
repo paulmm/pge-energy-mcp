@@ -284,6 +284,30 @@ class TestRateCache:
         assert set(rc.schedule_config) == {"tou_windows", "summer_months"}
 
 
+# ── NBC (non-bypassable charges) ──────────────────────────────────────
+
+
+class TestNBC:
+    def test_lookup_exposes_nbc(self):
+        r = lookup_rates("EV2-A", "PCE", 2016, 3)
+        assert r["nbc_per_kwh"] == pytest.approx(0.0345, abs=1e-4)
+        r2 = lookup_rates("EV2-A", "PGE_BUNDLED", income_tier=3)
+        assert r2["nbc_per_kwh"] == pytest.approx(0.0345, abs=1e-4)
+
+    def test_nem2_credit_excludes_nbc(self):
+        from src.rates.nem import calculate_export_credit
+        credit = calculate_export_credit(10.0, 0.30, "NEM2", nbc_per_kwh=0.0345)
+        assert credit == pytest.approx(10.0 * (0.30 - 0.0345))
+
+    def test_nem2_credit_never_negative(self):
+        from src.rates.nem import calculate_export_credit
+        assert calculate_export_credit(10.0, 0.02, "NEM2", nbc_per_kwh=0.0345) == 0.0
+
+    def test_nem2_default_nbc_zero_backcompat(self):
+        from src.rates.nem import calculate_export_credit
+        assert calculate_export_credit(10.0, 0.30, "NEM2") == pytest.approx(3.0)
+
+
 # ── Rate history ordering ─────────────────────────────────────────────
 
 

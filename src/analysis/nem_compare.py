@@ -84,7 +84,8 @@ def compare_nem_versions(interval_data: list[dict], plan: dict,
 
         # Export credits differ
         if exp > 0:
-            nem2_cred = calculate_export_credit(exp, rate, "NEM2")
+            nem2_cred = calculate_export_credit(
+                exp, rate, "NEM2", nbc_per_kwh=rate_info["nbc_per_kwh"])
             nem3_cred = calculate_export_credit(exp, rate, "NEM3",
                                                 hour=hour, month=month)
 

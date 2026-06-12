@@ -60,13 +60,14 @@ class TestTrueUpProjection:
         assert s["annual_total"] == pytest.approx(
             s["true_up_balance"] + s["total_bsc"], abs=0.05)
 
-    def test_summer_months_are_credit(self, intervals):
-        """Solar production should create NEM credits in summer."""
+    def test_peak_summer_month_is_credit(self, intervals):
+        """Peak solar production (June: exports > imports) should net a NEM
+        credit even after NBC reduces export value. Marginal months like
+        July (imports well above exports) correctly flip to small debits
+        once non-offsettable charges are counted."""
         result = project_trueup(intervals, self.PLAN)
-        summer = [b for b in result["monthly_balances"]
-                  if b["month"] in [6, 7, 8]]
-        credit_count = sum(1 for b in summer if b["is_credit_month"])
-        assert credit_count >= 2, "Expected most summer months to be credit months"
+        june = [b for b in result["monthly_balances"] if b["month"] == 6]
+        assert june and all(b["is_credit_month"] for b in june)
 
     def test_winter_months_are_debit(self, intervals):
         """Winter should have positive NEM balances (owe money)."""

@@ -44,6 +44,7 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
     pge_rates = _load_json("pge_rates.json")
     cca_rates = _load_json("cca_rates.json")
     pcia_data = _load_json("pcia_vintages.json")
+    nbc_per_kwh = pge_rates.get("nbc", {}).get("per_kwh", 0.0)
 
     if schedule not in pge_rates["schedules"]:
         raise ValueError(f"Unknown schedule: {schedule}")
@@ -100,6 +101,7 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
                 "generation": generation,
                 "pcia_per_kwh": 0.0,
             },
+            "nbc_per_kwh": nbc_per_kwh,
             "base_services_charge_daily": bsc_daily,
             "tou_windows": sched["tou_windows"],
             "summer_months": sched["summer_months"],
@@ -132,6 +134,7 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
             "generation": cca_gen,
             "pcia_per_kwh": pcia_per_kwh,
         },
+        "nbc_per_kwh": nbc_per_kwh,
         "base_services_charge_daily": bsc_daily,
         "tou_windows": sched["tou_windows"],
         "summer_months": sched["summer_months"],

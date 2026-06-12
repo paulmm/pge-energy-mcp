@@ -183,7 +183,8 @@ def _dispatch_tou(home_net: float, battery: BatteryFleet, period: str) -> tuple:
 def _simulate_system(home_loads: list, arrays: list, batteries: list,
                      strategy: str, psh: dict, effective_rates: dict,
                      schedule_config: dict, bsc_daily: float,
-                     nem_version: str, interval_data: list) -> dict:
+                     nem_version: str, interval_data: list,
+                     nbc_per_kwh: float = 0.0) -> dict:
     """
     Run one simulation pass: apply solar + battery to estimated home loads.
 
@@ -227,7 +228,8 @@ def _simulate_system(home_loads: list, arrays: list, batteries: list,
 
         imp_cost = grid_imp * rate
         exp_cred = calculate_export_credit(grid_exp, rate, nem_version,
-                                                  hour=hour, month=month)
+                                           hour=hour, month=month,
+                                           nbc_per_kwh=nbc_per_kwh)
 
         total_import += grid_imp
         total_export += grid_exp
@@ -309,6 +311,7 @@ def simulate(interval_data: list, system_config: dict,
     """
     effective_rates = rate_config["effective_rates"]
     bsc_daily = rate_config["base_services_charge_daily"]
+    nbc_per_kwh = rate_config.get("nbc_per_kwh", 0.0)
     schedule_config = {
         "tou_windows": rate_config["tou_windows"],
         "summer_months": rate_config["summer_months"],
@@ -336,7 +339,7 @@ def simulate(interval_data: list, system_config: dict,
         current.get("batteries", []),
         current.get("strategy", "self_powered"),
         psh, effective_rates, schedule_config, bsc_daily,
-        nem_version, interval_data,
+        nem_version, interval_data, nbc_per_kwh,
     )
 
     # ── Step 3: Simulate proposed system ──
@@ -345,12 +348,13 @@ def simulate(interval_data: list, system_config: dict,
         proposed.get("batteries", []),
         proposed.get("strategy", "self_powered"),
         psh, effective_rates, schedule_config, bsc_daily,
-        nem_version, interval_data,
+        nem_version, interval_data, nbc_per_kwh,
     )
 
     # ── Step 4: Compute Green Button baseline for context ──
     gb_cost = _compute_gb_cost(interval_data, effective_rates,
-                               schedule_config, bsc_daily, nem_version)
+                               schedule_config, bsc_daily, nem_version,
+                               nbc_per_kwh)
 
     # Savings: current_simulated - proposed_simulated (model errors cancel)
     sim_savings = round(current_result["annual_total"] - proposed_result["annual_total"], 2)
@@ -379,7 +383,7 @@ def simulate(interval_data: list, system_config: dict,
 
 def _compute_gb_cost(interval_data: list, effective_rates: dict,
                      schedule_config: dict, bsc_daily: float,
-                     nem_version: str) -> float:
+                     nem_version: str, nbc_per_kwh: float = 0.0) -> float:
     """Compute cost from raw Green Button data."""
     total_cost = 0.0
     total_credit = 0.0
@@ -390,7 +394,8 @@ def _compute_gb_cost(interval_data: list, effective_rates: dict,
             schedule_config=schedule_config)
         rate = effective_rates.get(season, {}).get(period, 0.0)
         total_cost += iv["import_kwh"] * rate
-        total_credit += calculate_export_credit(iv["export_kwh"], rate, nem_version,
-                                                        hour=iv["hour"], month=iv["month"])
+        total_credit += calculate_export_credit(
+            iv["export_kwh"], rate, nem_version,
+            hour=iv["hour"], month=iv["month"], nbc_per_kwh=nbc_per_kwh)
         days.add(iv["date"])
     return total_cost - total_credit + bsc_daily * len(days)

@@ -14,12 +14,18 @@ from __future__ import annotations
 
 def calculate_export_credit(export_kwh: float, rate_per_kwh: float,
                             nem_version: str = "NEM2",
-                            hour: int = None, month: int = None) -> float:
+                            hour: int = None, month: int = None,
+                            nbc_per_kwh: float = 0.0) -> float:
     """
     Calculate the credit earned for exported energy.
 
-    NEM 2.0: Full retail rate credit at applicable TOU rate.
-    NEM 3.0: Avoided Cost Calculator value by hour and month.
+    NEM 2.0: Retail-rate credit minus non-bypassable charges. NBCs (PPP,
+    nuclear decommissioning, wildfire fund, CTC — ~$0.03-0.04/kWh) cannot
+    be offset by exports, so each exported kWh earns (retail − NBC). This
+    matches the bill's "NBC on gross imports minus net-usage adjustment"
+    algebra.
+    NEM 3.0: Avoided Cost Calculator value by hour and month (NBC does not
+    apply to export valuation under the net billing tariff).
 
     Args:
         export_kwh: Energy exported in the interval
@@ -27,15 +33,13 @@ def calculate_export_credit(export_kwh: float, rate_per_kwh: float,
         nem_version: "NEM2" or "NEM3"
         hour: Hour of day 0-23 (required for NEM3 ACC lookup)
         month: Month 1-12 (required for NEM3 ACC lookup)
+        nbc_per_kwh: Non-bypassable charge $/kWh from lookup_rates()
 
     Returns:
         Credit amount (positive = money saved)
     """
     if nem_version == "NEM2":
-        # Full retail credit at the effective rate for the TOU period.
-        # NBC (~$0.02-0.04/kWh) cannot be offset but is not included in our
-        # delivery rate calculation, so this is already accounted for.
-        return export_kwh * rate_per_kwh
+        return export_kwh * max(0.0, rate_per_kwh - nbc_per_kwh)
     elif nem_version == "NEM3":
         acc_rate = get_acc_rate(hour, month)
         return export_kwh * acc_rate
