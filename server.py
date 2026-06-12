@@ -300,7 +300,10 @@ async def compare_plans(
     Args:
         interval_data: Hourly records from parse_green_button (list of dicts with
                        datetime, import_kwh, export_kwh, hour, month fields)
-        plans: List of plan configs, each with {schedule, provider, vintage_year, income_tier}
+        plans: List of plan configs, each with {schedule, provider, vintage_year,
+               income_tier}. For baseline-tiered schedules (E-TOU-C) optionally
+               add {baseline_territory: "T", heat_source: "electric"|"gas"} —
+               territory is printed on the PG&E bill.
         nem_version: "NEM2" (full retail export credit) or "NEM3" (avoided cost export credit)
         config_id: Optional stored config ID — if provided, uses its nem_version as default
 

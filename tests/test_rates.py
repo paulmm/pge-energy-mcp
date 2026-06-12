@@ -168,6 +168,30 @@ class TestNEM3ACC:
                 assert rate > 0, f"ACC rate at month={month} hour={hour} is {rate}"
 
 
+# ── Baseline allowances ───────────────────────────────────────────────
+
+
+class TestBaseline:
+    def test_territory_t_allowance(self):
+        from src.rates.baseline import get_daily_allowance
+        assert get_daily_allowance("T", "winter", all_electric=True) > \
+            get_daily_allowance("T", "winter", all_electric=False)
+        assert get_daily_allowance("T", "summer", all_electric=False) > 0
+
+    def test_unknown_territory_raises(self):
+        from src.rates.baseline import get_daily_allowance
+        with pytest.raises(ValueError, match="territory"):
+            get_daily_allowance("ZZ", "winter")
+
+    def test_etouc_exposes_baseline_credit(self):
+        r = lookup_rates("E-TOU-C", "PGE_BUNDLED", income_tier=3)
+        assert r["baseline_credit_per_kwh"] == pytest.approx(0.08)
+
+    def test_ev2a_has_no_baseline_credit(self):
+        r = lookup_rates("EV2-A", "PGE_BUNDLED", income_tier=3)
+        assert r["baseline_credit_per_kwh"] == 0.0
+
+
 # ── ACC table: zones and bounds ───────────────────────────────────────
 
 

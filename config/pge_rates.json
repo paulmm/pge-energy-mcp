@@ -80,10 +80,11 @@
         "off_peak": {"hours": [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,21,22,23], "label": "All other hours"}
       },
       "summer_months": [6,7,8,9],
+      "baseline_credit_per_kwh": 0.08,
       "total_bundled": {
         "summer": {"peak": 0.52000, "off_peak": 0.32000},
         "winter": {"peak": 0.40000, "off_peak": 0.29000},
-        "_above_baseline": "Rates shown are above-baseline. Below-baseline: summer peak $0.44, winter peak $0.32"
+        "_above_baseline": "Rates shown are above-baseline. Below-baseline: summer peak $0.44, winter peak $0.32. baseline_credit_per_kwh = above minus below ($0.52-$0.44), applied to monthly net usage up to the territory allowance."
       },
       "generation": {
         "summer": {"peak": 0.18200, "off_peak": 0.09500},

@@ -65,6 +65,8 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
     export_kwh_by_period = defaultdict(float)
     season_import_cost = defaultdict(float)
     season_export_credit = defaultdict(float)
+    monthly_net_kwh = defaultdict(float)   # YYYY-MM -> net kWh
+    monthly_days = defaultdict(set)
     days = set()
     bsc_by_date = {}
 
@@ -76,6 +78,9 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
         exp = iv["export_kwh"]
         dt = iv["date"]
         days.add(dt)
+        ym = dt[:7]
+        monthly_net_kwh[ym] += imp - exp
+        monthly_days[ym].add(dt)
 
         period, season = classify_tou_period(hour, month, dow,
                                              schedule_config=schedule_config,
@@ -104,10 +109,27 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
     # BSC: sum per-day BSC (may vary by date for time-aware mode)
     bsc_total = sum(bsc_by_date.values())
 
+    # Baseline credit (E-TOU-C): flat credit on monthly net usage up to the
+    # territory allowance.
+    baseline_credit_total = 0.0
+    credit_rate = base_rate_info.get("baseline_credit_per_kwh", 0.0)
+    if credit_rate:
+        from src.rates.baseline import get_daily_allowance
+        territory = plan.get("baseline_territory", "T")
+        all_electric = plan.get("heat_source") == "electric"
+        for ym, net_kwh in monthly_net_kwh.items():
+            month_num = int(ym[5:7])
+            season = ("summer" if month_num in base_rate_info["summer_months"]
+                      else "winter")
+            allowance = (get_daily_allowance(territory, season, all_electric)
+                         * len(monthly_days[ym]))
+            baseline_credit_total += credit_rate * min(max(net_kwh, 0.0),
+                                                       allowance)
+
     total_import_cost = sum(import_cost_by_period.values())
     total_export_credit = sum(export_credit_by_period.values())
     net_energy_cost = total_import_cost - total_export_credit
-    annual_total = net_energy_cost + bsc_total
+    annual_total = net_energy_cost + bsc_total - baseline_credit_total
 
     tou_breakdown = {}
     all_keys = set(import_cost_by_period.keys()) | set(export_credit_by_period.keys())
@@ -134,6 +156,7 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
         "total_import_cost": round(total_import_cost, 2),
         "total_export_credit": round(total_export_credit, 2),
         "base_services_charge": round(bsc_total, 2),
+        "baseline_credit": round(baseline_credit_total, 2),
         "num_days": len(days),
         "tou_breakdown": tou_breakdown,
         "season_summary": {

@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "source": "PG&E baseline allowance table (kWh/day)",
+    "notes": "ESTIMATES for territory T (SF peninsula coastal) — verify against PG&E's current baseline quantities (Schedule E-1 preliminary statement) before relying on absolute numbers. all_electric = permanently-installed electric heat (PG&E code H). Add other territories (P,Q,R,S,V,W,X,Y,Z) as users need them."
+  },
+  "territories": {
+    "T": {
+      "basic": {"summer": 6.5, "winter": 7.5},
+      "all_electric": {"summer": 6.5, "winter": 11.9}
+    }
+  }
+}

@@ -137,3 +137,37 @@ class TestUsageProfile:
         # Cross-check with parser totals
         total_import = sum(iv["import_kwh"] for iv in intervals)
         assert p["total_import_kwh"] == pytest.approx(total_import, abs=1.0)
+
+
+# ── E-TOU-C baseline credit ──────────────────────────────────────────
+
+
+def test_etouc_baseline_credit_reduces_cost():
+    """30 winter days of 10 kWh/day net usage on E-TOU-C should earn a
+    baseline credit of credit_rate * min(net, allowance*days)."""
+    synthetic = []
+    for day in range(1, 31):
+        dt = f"2026-01-{day:02d}"
+        for hour in range(24):
+            synthetic.append({
+                "date": dt, "hour": hour, "month": 1,
+                "day_of_week": (day - 1) % 7,
+                "import_kwh": 10.0 / 24, "export_kwh": 0.0,
+            })
+
+    plan = {"schedule": "E-TOU-C", "provider": "PGE_BUNDLED",
+            "income_tier": 3, "baseline_territory": "T",
+            "heat_source": "electric"}
+    result = compare(synthetic, [plan], nem_version="NEM2")
+    r = result["plans"][0]
+    assert r["baseline_credit"] > 0
+    # 300 kWh net for the month is under any plausible allowance,
+    # so the whole month is credited at $0.08/kWh = $24.00
+    assert r["baseline_credit"] == pytest.approx(300 * 0.08, abs=0.5)
+
+
+def test_non_baseline_schedule_has_zero_credit(intervals):
+    plan = {"schedule": "EV2-A", "provider": "PCE", "vintage_year": 2016,
+            "income_tier": 3}
+    result = compare(intervals, [plan])
+    assert result["plans"][0]["baseline_credit"] == 0.0
