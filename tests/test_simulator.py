@@ -349,3 +349,63 @@ def test_string_array_ac_watts_fallback():
     for hour in (10, 12, 14):
         assert estimate_array_hourly_kwh(without_ac, 6, hour) == \
             pytest.approx(estimate_array_hourly_kwh(with_ac, 6, hour))
+
+
+# ── Financials (payback / ROI) ───────────────────────────────────────
+
+
+def _flat_rate_config():
+    return {
+        "effective_rates": {
+            "summer": {"peak": 0.50, "partial_peak": 0.40, "off_peak": 0.20},
+            "winter": {"peak": 0.40, "partial_peak": 0.35, "off_peak": 0.20},
+        },
+        "tou_windows": {
+            "peak": {"hours": [16, 17, 18, 19, 20]},
+            "partial_peak": {"hours": [15, 21, 22, 23]},
+            "off_peak": {"hours": list(range(0, 15))},
+        },
+        "summer_months": [6, 7, 8, 9],
+        "base_services_charge_daily": 0.79,
+        "nbc_per_kwh": 0.0345,
+    }
+
+
+def test_simulate_financials():
+    synthetic = []
+    for day in range(1, 8):
+        for hour in range(24):
+            synthetic.append({
+                "date": f"2026-01-{day:02d}", "hour": hour, "month": 1,
+                "day_of_week": (day - 1) % 7,
+                "import_kwh": 1.5, "export_kwh": 0.0,
+            })
+    system_config = {
+        "current_system": {"arrays": [], "batteries": []},
+        "proposed_system": {
+            "arrays": [{"panels": 8, "panel_watts": 400, "type": "micro",
+                        "inverter_watts_ac": 350, "ac_watts": 2800}],
+            "batteries": [],
+        },
+    }
+    result = simulate(synthetic, system_config, _flat_rate_config(),
+                      project_cost=8000, rate_escalation=0.03)
+    fin = result["financials"]
+    assert fin["project_cost"] == 8000
+    assert fin["annual_savings_year1"] == result["estimated_savings"]
+    if result["estimated_savings"] > 0:
+        assert fin["simple_payback_years"] == pytest.approx(
+            8000 / result["estimated_savings"], rel=0.01)
+    expected_10yr = sum(result["estimated_savings"] * 1.03 ** i
+                        for i in range(10))
+    assert fin["ten_year_savings"] == pytest.approx(expected_10yr, abs=1.0)
+    assert fin["ten_year_net"] == pytest.approx(expected_10yr - 8000, abs=1.0)
+
+
+def test_simulate_no_cost_means_no_financials():
+    synthetic = [{"date": "2026-01-01", "hour": h, "month": 1,
+                  "day_of_week": 0, "import_kwh": 1.0, "export_kwh": 0.0}
+                 for h in range(24)]
+    result = simulate(synthetic, {"current_system": {}, "proposed_system": {}},
+                      _flat_rate_config())
+    assert result["financials"] is None

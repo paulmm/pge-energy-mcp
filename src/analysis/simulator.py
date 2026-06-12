@@ -283,7 +283,9 @@ def _simulate_system(home_loads: list, arrays: list, batteries: list,
 
 
 def simulate(interval_data: list, system_config: dict,
-             rate_config: dict, nem_version: str = "NEM2") -> dict:
+             rate_config: dict, nem_version: str = "NEM2",
+             project_cost: float = None,
+             rate_escalation: float = 0.03) -> dict:
     """
     Simulate current vs proposed solar+battery system.
 
@@ -308,9 +310,14 @@ def simulate(interval_data: list, system_config: dict,
         }
         rate_config: Output from lookup_rates()
         nem_version: "NEM2" or "NEM3"
+        project_cost: Optional out-of-pocket cost of the proposed upgrade ($).
+            When provided, the result includes payback and 10-year economics.
+        rate_escalation: Annual electricity rate escalation for the 10-year
+            projection (default 3%).
 
     Returns:
-        Dict with current_simulated, proposed, savings, and breakdowns.
+        Dict with current_simulated, proposed, savings, breakdowns, and
+        financials (payback, 10-year net) when project_cost is given.
     """
     effective_rates = rate_config["effective_rates"]
     bsc_daily = rate_config["base_services_charge_daily"]
@@ -371,10 +378,29 @@ def simulate(interval_data: list, system_config: dict,
     self_consumed = total_proposed_solar - proposed_result["total_export_kwh"]
     sc_pct = round(self_consumed / total_proposed_solar * 100, 1) if total_proposed_solar > 0 else 0
 
+    financials = None
+    if project_cost is not None and project_cost > 0:
+        annual = sim_savings
+        ten_year_savings = sum(annual * (1 + rate_escalation) ** i
+                               for i in range(10))
+        financials = {
+            "project_cost": round(project_cost, 2),
+            "annual_savings_year1": annual,
+            "simple_payback_years": (round(project_cost / annual, 1)
+                                     if annual > 0 else None),
+            "ten_year_savings": round(ten_year_savings, 2),
+            "ten_year_net": round(ten_year_savings - project_cost, 2),
+            "rate_escalation": rate_escalation,
+            "note": ("Simple payback on year-1 savings; 10-year figures "
+                     "escalate savings at the given rate. Excludes financing, "
+                     "tax credits (ITC), and panel degradation."),
+        }
+
     return {
         "current_simulated": current_result,
         "proposed": proposed_result,
         "estimated_savings": sim_savings,
+        "financials": financials,
         "self_consumption_pct": sc_pct,
         "green_button_baseline": {
             "annual_total": round(gb_cost, 2),

@@ -355,6 +355,8 @@ async def simulate_system(
     system_config: dict,
     rate_config: dict,
     nem_version: str = "NEM2",
+    project_cost: float = None,
+    rate_escalation: float = 0.03,
     config_id: str = None,
 ) -> dict:
     """
@@ -377,19 +379,26 @@ async def simulate_system(
         }
         rate_config: Rate plan config from get_rates output
         nem_version: "NEM2" or "NEM3"
+        project_cost: Optional out-of-pocket cost of the proposed upgrade ($).
+            When provided, the result includes simple payback years and
+            10-year savings/net economics.
+        rate_escalation: Annual electricity rate escalation for the 10-year
+            projection (default 3%).
+        config_id: Optional stored config ID — if provided, uses its nem_version as default
 
     Returns:
         Dict with: estimated_savings (sim-vs-sim, model errors cancel),
         current_simulated and proposed cost breakdowns, TOU period detail,
-        monthly breakdown, green_button_baseline for context
-        config_id: Optional stored config ID — if provided, uses its nem_version as default
+        monthly breakdown, green_button_baseline for context, and
+        financials (simple_payback_years, ten_year_net) when project_cost given
     """
     if config_id:
         cfg = _load_config(config_id)
         if not nem_version or nem_version == "NEM2":
             nem_version = cfg.get("nem_version", nem_version)
     from src.analysis.simulator import simulate
-    return simulate(interval_data, system_config, rate_config, nem_version)
+    return simulate(interval_data, system_config, rate_config, nem_version,
+                    project_cost=project_cost, rate_escalation=rate_escalation)
 
 
 @mcp.tool(tags={"analysis", "battery"}, annotations={"title": "Seasonal strategy advisor", "readOnlyHint": True, "openWorldHint": False})
