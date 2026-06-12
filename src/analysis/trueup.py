@@ -11,7 +11,7 @@ CLAUDE.md reference: ~$2,000-2,100 in Dec-Jan cycle. Monthly charges $8-118.
 from __future__ import annotations
 
 from collections import defaultdict
-from src.rates.engine import lookup_rates
+from src.rates.engine import RateCache
 from src.rates.tou import classify_tou_period
 from src.rates.nem import calculate_export_credit
 
@@ -37,20 +37,8 @@ def project_trueup(interval_data: list, plan: dict,
         Dict with monthly_balances, cumulative NEM balance, projected true-up,
         and BSC charges.
     """
-    schedule = plan["schedule"]
-    provider = plan.get("provider", "PGE_BUNDLED")
-    vintage_year = plan.get("vintage_year", 2016)
-    income_tier = plan.get("income_tier", 3)
-
-    # Get schedule config for TOU classification
-    base_rates = lookup_rates(schedule, provider, vintage_year, income_tier)
-    schedule_config = {
-        "tou_windows": base_rates["tou_windows"],
-        "summer_months": base_rates["summer_months"],
-    }
-
-    # Rate cache for time-aware lookups
-    rate_cache = {}
+    rc = RateCache.from_plan(plan, time_aware=time_aware)
+    schedule_config = rc.schedule_config
 
     # Group intervals by calendar month (YYYY-MM)
     monthly_data = defaultdict(lambda: {
@@ -69,13 +57,7 @@ def project_trueup(interval_data: list, plan: dict,
             iv["hour"], iv["month"], iv["day_of_week"],
             schedule_config=schedule_config)
 
-        if time_aware:
-            if dt not in rate_cache:
-                rate_cache[dt] = lookup_rates(schedule, provider,
-                                              vintage_year, income_tier, date=dt)
-            rate_info = rate_cache[dt]
-        else:
-            rate_info = base_rates
+        rate_info = rc.for_date(dt)
 
         rate = rate_info["effective_rates"].get(season, {}).get(period, 0.0)
         m["bsc_by_day"][dt] = rate_info["base_services_charge_daily"]

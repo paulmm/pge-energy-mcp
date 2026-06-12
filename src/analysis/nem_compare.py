@@ -12,7 +12,7 @@ where the cost difference comes from (export credit loss, TOU period impact).
 from __future__ import annotations
 
 from collections import defaultdict
-from src.rates.engine import lookup_rates
+from src.rates.engine import RateCache
 from src.rates.tou import classify_tou_period
 from src.rates.nem import calculate_export_credit, get_acc_rate, get_acc_summary
 
@@ -31,18 +31,8 @@ def compare_nem_versions(interval_data: list[dict], plan: dict,
         Dict with NEM2 and NEM3 costs, delta, export credit breakdown by
         TOU period, and insights about the transition impact.
     """
-    schedule = plan["schedule"]
-    provider = plan.get("provider", "PGE_BUNDLED")
-    vintage_year = plan.get("vintage_year", 2016)
-    income_tier = plan.get("income_tier", 3)
-
-    base_rate_info = lookup_rates(schedule, provider, vintage_year, income_tier)
-    schedule_config = {
-        "tou_windows": base_rate_info["tou_windows"],
-        "summer_months": base_rate_info["summer_months"],
-    }
-
-    rate_cache = {}
+    rc = RateCache.from_plan(plan, time_aware=time_aware)
+    schedule_config = rc.schedule_config
 
     # Track per-period export credits under each NEM version
     nem2_credit_by_period = defaultdict(float)
@@ -79,13 +69,7 @@ def compare_nem_versions(interval_data: list[dict], plan: dict,
                                              schedule_config=schedule_config)
         key = f"{season}_{period}"
 
-        if time_aware:
-            if dt not in rate_cache:
-                rate_cache[dt] = lookup_rates(schedule, provider,
-                                              vintage_year, income_tier, date=dt)
-            rate_info = rate_cache[dt]
-        else:
-            rate_info = base_rate_info
+        rate_info = rc.for_date(dt)
 
         rate = rate_info["effective_rates"].get(season, {}).get(period, 0.0)
         bsc_by_date[dt] = rate_info["base_services_charge_daily"]

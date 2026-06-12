@@ -7,7 +7,7 @@ each interval's date (e.g., pre-March 2026 delivery rates, pre-Feb 2026 PCE).
 from __future__ import annotations
 
 from collections import defaultdict
-from src.rates.engine import lookup_rates
+from src.rates.engine import RateCache
 from src.rates.tou import classify_tou_period
 from src.rates.nem import calculate_export_credit
 
@@ -55,20 +55,9 @@ def compare(interval_data: list[dict], plans: list[dict],
 def _calculate_annual_cost(interval_data: list[dict], plan: dict,
                            nem_version: str, time_aware: bool) -> dict:
     """Calculate annual cost for a single rate plan against interval data."""
-    schedule = plan["schedule"]
-    provider = plan.get("provider", "PGE_BUNDLED")
-    vintage_year = plan.get("vintage_year", 2016)
-    income_tier = plan.get("income_tier", 3)
-
-    # Get schedule config for TOU classification (doesn't change with date)
-    base_rate_info = lookup_rates(schedule, provider, vintage_year, income_tier)
-    schedule_config = {
-        "tou_windows": base_rate_info["tou_windows"],
-        "summer_months": base_rate_info["summer_months"],
-    }
-
-    # Cache rate lookups by date to avoid redundant calls
-    rate_cache = {}
+    rc = RateCache.from_plan(plan, time_aware=time_aware)
+    base_rate_info = rc.base
+    schedule_config = rc.schedule_config
 
     import_cost_by_period = defaultdict(float)
     export_credit_by_period = defaultdict(float)
@@ -91,12 +80,7 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
         period, season = classify_tou_period(hour, month, dow,
                                              schedule_config=schedule_config)
 
-        # Get rate for this date
-        if time_aware:
-            rate_info = _get_cached_rates(rate_cache, schedule, provider,
-                                          vintage_year, income_tier, dt)
-        else:
-            rate_info = base_rate_info
+        rate_info = rc.for_date(dt)
 
         rate = rate_info["effective_rates"].get(season, {}).get(period, 0.0)
         bsc_by_date[dt] = rate_info["base_services_charge_daily"]
@@ -139,7 +123,7 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
         "effective_rates": base_rate_info["effective_rates"],
         "base_services_charge_daily": base_rate_info["base_services_charge_daily"],
     }
-    if time_aware and rate_cache:
+    if rc.used_history:
         rate_info_summary["note"] = "Time-aware: rates varied by date period"
 
     return {
@@ -160,13 +144,3 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
         },
         "rate_info": rate_info_summary,
     }
-
-
-def _get_cached_rates(cache: dict, schedule: str, provider: str,
-                      vintage_year: int, income_tier: int,
-                      date: str) -> dict:
-    """Get rates for a date, caching by date to avoid redundant lookups."""
-    if date not in cache:
-        cache[date] = lookup_rates(schedule, provider, vintage_year,
-                                   income_tier, date=date)
-    return cache[date]

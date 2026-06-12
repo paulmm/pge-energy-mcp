@@ -199,3 +199,46 @@ def _deep_copy_rates(d: dict) -> dict:
             result[season] = {k: v for k, v in d[season].items()
                               if not k.startswith("_") and isinstance(v, (int, float))}
     return result
+
+
+class RateCache:
+    """Date-aware rate lookups for one plan, cached by date.
+
+    Replaces the cache-by-date pattern previously duplicated across
+    compare.py, trueup.py, and nem_compare.py.
+    """
+
+    def __init__(self, schedule: str, provider: str = "PGE_BUNDLED",
+                 vintage_year: int = 2016, income_tier: int = 3,
+                 time_aware: bool = True):
+        self.schedule = schedule
+        self.provider = provider
+        self.vintage_year = vintage_year
+        self.income_tier = income_tier
+        self.time_aware = time_aware
+        self.base = lookup_rates(schedule, provider, vintage_year, income_tier)
+        self._by_date: dict[str, dict] = {}
+
+    @classmethod
+    def from_plan(cls, plan: dict, time_aware: bool = True) -> "RateCache":
+        return cls(plan["schedule"], plan.get("provider", "PGE_BUNDLED"),
+                   plan.get("vintage_year", 2016), plan.get("income_tier", 3),
+                   time_aware=time_aware)
+
+    @property
+    def schedule_config(self) -> dict:
+        return {"tou_windows": self.base["tou_windows"],
+                "summer_months": self.base["summer_months"]}
+
+    def for_date(self, date_str: str) -> dict:
+        if not self.time_aware:
+            return self.base
+        if date_str not in self._by_date:
+            self._by_date[date_str] = lookup_rates(
+                self.schedule, self.provider, self.vintage_year,
+                self.income_tier, date=date_str)
+        return self._by_date[date_str]
+
+    @property
+    def used_history(self) -> bool:
+        return self.time_aware and bool(self._by_date)

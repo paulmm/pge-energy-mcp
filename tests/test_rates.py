@@ -261,3 +261,24 @@ class TestAllHoursCovered:
             period, season = classify_tou_period(hour, 7, 2, schedule=schedule)
             assert period in ("peak", "partial_peak", "off_peak")
             assert season in ("summer", "winter")
+
+
+# ── RateCache ─────────────────────────────────────────────────────────
+
+
+class TestRateCache:
+    def test_for_date_matches_direct_lookup(self):
+        from src.rates.engine import RateCache
+        rc = RateCache("EV2-A", "PCE", 2016, 3)
+        direct = lookup_rates("EV2-A", "PCE", 2016, 3, date="2026-01-15")
+        assert rc.for_date("2026-01-15") == direct
+
+    def test_time_aware_false_returns_base(self):
+        from src.rates.engine import RateCache
+        rc = RateCache("EV2-A", "PCE", 2016, 3, time_aware=False)
+        assert rc.for_date("2025-06-01") == rc.base
+
+    def test_schedule_config_shape(self):
+        from src.rates.engine import RateCache
+        rc = RateCache("EV2-A", "PCE", 2016, 3)
+        assert set(rc.schedule_config) == {"tou_windows", "summer_months"}
