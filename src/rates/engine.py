@@ -159,7 +159,12 @@ def _apply_history(date: str, schedule: str, provider: str,
     except FileNotFoundError:
         return
 
-    for period in history.get("periods", []):
+    # Apply periods in descending cutoff order so that when several periods
+    # match a date, the one with the smallest applies_before (the oldest
+    # rate era, closest to the date) is applied last and wins.
+    periods = sorted(history.get("periods", []),
+                     key=lambda p: p.get("applies_before", ""), reverse=True)
+    for period in periods:
         cutoff = period.get("applies_before", "")
         if not cutoff or date >= cutoff:
             continue

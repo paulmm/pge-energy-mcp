@@ -282,3 +282,40 @@ class TestRateCache:
         from src.rates.engine import RateCache
         rc = RateCache("EV2-A", "PCE", 2016, 3)
         assert set(rc.schedule_config) == {"tou_windows", "summer_months"}
+
+
+# ── Rate history ordering ─────────────────────────────────────────────
+
+
+class TestRateHistoryOrdering:
+    def test_tightest_cutoff_wins_when_periods_overlap(self):
+        """For a date matched by two periods overriding the same field, the
+        period with the smallest applies_before (oldest era) must win."""
+        import src.rates.engine as engine
+        saved = engine._cache.get("rate_history.json")
+        engine._cache["rate_history.json"] = {
+            "periods": [
+                {  # smaller cutoff listed FIRST — must still win for
+                   # dates before 2026-01-01 regardless of file order
+                    "applies_before": "2026-01-01",
+                    "pge_delivery_overrides": {
+                        "EV2-A": {"winter": {"off_peak": 0.11}},
+                    },
+                },
+                {  # larger cutoff also matches but is the later era
+                    "applies_before": "2026-03-01",
+                    "pge_delivery_overrides": {
+                        "EV2-A": {"winter": {"off_peak": 0.99}},
+                    },
+                },
+            ]
+        }
+        try:
+            r = lookup_rates("EV2-A", "PGE_BUNDLED", income_tier=3,
+                             date="2025-12-15")
+            assert r["components"]["delivery"]["winter"]["off_peak"] == 0.11
+        finally:
+            if saved is not None:
+                engine._cache["rate_history.json"] = saved
+            else:
+                engine._cache.pop("rate_history.json", None)
