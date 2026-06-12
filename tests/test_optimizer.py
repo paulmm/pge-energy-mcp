@@ -429,3 +429,34 @@ class TestScheduleFormatter:
         assert savings["savings_dollars"] == 4.00
         assert savings["savings_pct"] == pytest.approx(33.3, abs=0.1)
         assert savings["import_reduction_kwh"] == 18.0
+
+
+# ── Solver selection ─────────────────────────────────────────────────
+
+
+def test_solver_selection_prefers_available_solver():
+    """With highspy installed, the optimizer must find a solver and not
+    return the 'No compatible solver' error."""
+    from src.optimization.battery_optimizer import optimize_dispatch
+
+    intervals = [{"date": "2026-01-01", "hour": h, "month": 1,
+                  "day_of_week": 0, "import_kwh": 1.0, "export_kwh": 0.0}
+                 for h in range(24)]
+    rate_config = {
+        "effective_rates": {"winter": {"peak": 0.40, "partial_peak": 0.30,
+                                       "off_peak": 0.20},
+                            "summer": {"peak": 0.50, "partial_peak": 0.40,
+                                       "off_peak": 0.20}},
+        "tou_windows": {"peak": {"hours": [16, 17, 18, 19, 20]},
+                        "partial_peak": {"hours": [15, 21, 22, 23]},
+                        "off_peak": {"hours": list(range(0, 15))}},
+        "summer_months": [6, 7, 8, 9],
+    }
+    system = {"arrays": [], "batteries": [{"kwh": 13.5, "kw": 5.0,
+                                           "efficiency": 0.9,
+                                           "status": "working"}]}
+    result = optimize_dispatch(intervals, system, rate_config,
+                               horizon_days=1)
+    assert "No compatible solver" not in str(result.get("error", ""))
+    assert result.get("model_status", {}).get("solver") in (
+        "appsi_highs", "cbc", "glpk")

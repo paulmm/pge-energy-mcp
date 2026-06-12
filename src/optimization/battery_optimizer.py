@@ -82,26 +82,24 @@ def optimize_dispatch(
             "hint": "Also install CBC solver: brew install cbc (macOS) or apt-get install coinor-cbc (Linux)",
         }
 
-    # Check for solver availability
-    try:
-        solver = pyo.SolverFactory("cbc")
-        if not solver.available():
-            raise RuntimeError("CBC not available")
-    except Exception:
-        # Try glpk as fallback
+    # Pick the first available solver. appsi_highs ships as a pip wheel
+    # (highspy) so it works on Railway without system packages; CBC/GLPK
+    # remain supported for local installs.
+    solver_name = None
+    for candidate in ("appsi_highs", "cbc", "glpk"):
         try:
-            solver = pyo.SolverFactory("glpk")
-            if not solver.available():
-                raise RuntimeError("GLPK not available")
-            solver_name = "glpk"
+            if pyo.SolverFactory(candidate).available():
+                solver_name = candidate
+                break
         except Exception:
-            return {
-                "error": "No compatible solver found. Install CBC or GLPK.",
-                "hint": "Install CBC: brew install cbc (macOS) or apt-get install coinor-cbc (Linux). "
-                        "Install GLPK: brew install glpk (macOS) or apt-get install glpk-utils (Linux).",
-            }
-    else:
-        solver_name = "cbc"
+            continue
+    if solver_name is None:
+        return {
+            "error": "No compatible solver found.",
+            "hint": "pip install highspy (pure-pip, recommended), or install "
+                    "CBC (brew install cbc / apt-get install coinor-cbc) or "
+                    "GLPK (brew install glpk / apt-get install glpk-utils).",
+        }
 
     # Rate lookup setup
     effective_rates = rate_config["effective_rates"]

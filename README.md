@@ -290,9 +290,8 @@ pip install -e ".[dev]"
 # Run tests (234 passing)
 pytest
 
-# Install CBC solver for battery optimizer
-brew install cbc          # macOS
-apt-get install coinor-cbc  # Linux
+# Battery optimizer solver: highspy (HiGHS) installs automatically with
+# the package. CBC/GLPK also work if you prefer: brew install cbc
 ```
 
 ### Security
