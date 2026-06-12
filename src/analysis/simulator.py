@@ -210,7 +210,8 @@ def _simulate_system(home_loads: list, arrays: list, batteries: list,
         days.add(iv["date"])
 
         period, season = classify_tou_period(hour, month, dow,
-                                             schedule_config=schedule_config)
+                                             schedule_config=schedule_config,
+                                             date_str=iv["date"])
         rate = effective_rates.get(season, {}).get(period, 0.0)
 
         home_load = home_loads[i]
@@ -391,7 +392,7 @@ def _compute_gb_cost(interval_data: list, effective_rates: dict,
     for iv in interval_data:
         period, season = classify_tou_period(
             iv["hour"], iv["month"], iv["day_of_week"],
-            schedule_config=schedule_config)
+            schedule_config=schedule_config, date_str=iv["date"])
         rate = effective_rates.get(season, {}).get(period, 0.0)
         total_cost += iv["import_kwh"] * rate
         total_credit += calculate_export_credit(

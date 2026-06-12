@@ -58,7 +58,9 @@ def profile(interval_data: list[dict], schedule: str = "EV2-A") -> dict:
         total_import += imp
         total_export += exp
 
-        period, season = classify_tou_period(hour, month, dow, schedule_config=sched_config)
+        period, season = classify_tou_period(hour, month, dow,
+                                             schedule_config=sched_config,
+                                             date_str=dt)
         period_import[period] += imp
         period_export[period] += exp
         season_import[season] += imp

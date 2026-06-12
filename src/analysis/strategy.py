@@ -47,7 +47,7 @@ def seasonal_strategy(interval_data: list, rate_config: dict,
     for iv in interval_data:
         period, season = classify_tou_period(
             iv["hour"], iv["month"], iv["day_of_week"],
-            schedule_config=schedule_config)
+            schedule_config=schedule_config, date_str=iv.get("date"))
 
         season_period_import[season][period] += iv["import_kwh"]
         season_period_export[season][period] += iv["export_kwh"]

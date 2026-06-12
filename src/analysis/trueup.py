@@ -55,7 +55,7 @@ def project_trueup(interval_data: list, plan: dict,
 
         period, season = classify_tou_period(
             iv["hour"], iv["month"], iv["day_of_week"],
-            schedule_config=schedule_config)
+            schedule_config=schedule_config, date_str=iv["date"])
 
         rate_info = rc.for_date(dt)
 

@@ -66,7 +66,8 @@ def compare_nem_versions(interval_data: list[dict], plan: dict,
         days.add(dt)
 
         period, season = classify_tou_period(hour, month, dow,
-                                             schedule_config=schedule_config)
+                                             schedule_config=schedule_config,
+                                             date_str=dt)
         key = f"{season}_{period}"
 
         rate_info = rc.for_date(dt)

@@ -78,7 +78,8 @@ def _calculate_annual_cost(interval_data: list[dict], plan: dict,
         days.add(dt)
 
         period, season = classify_tou_period(hour, month, dow,
-                                             schedule_config=schedule_config)
+                                             schedule_config=schedule_config,
+                                             date_str=dt)
 
         rate_info = rc.for_date(dt)
 

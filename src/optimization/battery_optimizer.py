@@ -140,7 +140,8 @@ def optimize_dispatch(
 
         # Get TOU rate for this hour
         period, season = classify_tou_period(hour, month, dow,
-                                             schedule_config=schedule_config)
+                                             schedule_config=schedule_config,
+                                             date_str=iv.get("date"))
         rate = effective_rates.get(season, {}).get(period, 0.0)
         import_rate_arr.append(rate)
 

@@ -33,7 +33,8 @@ def classify_season(month: int, summer_months: list[int]) -> str:
 
 def classify_tou_period(hour: int, month: int, day_of_week: int,
                         schedule: str | None = None,
-                        schedule_config: dict | None = None) -> tuple[str, str]:
+                        schedule_config: dict | None = None,
+                        date_str: str | None = None) -> tuple[str, str]:
     """
     Classify an hour into (tou_period, season).
 
@@ -43,6 +44,8 @@ def classify_tou_period(hour: int, month: int, day_of_week: int,
         day_of_week: 0=Monday, 6=Sunday (ISO convention)
         schedule: Schedule name (e.g. "EV2-A"). Used if schedule_config not provided.
         schedule_config: Pre-loaded schedule config dict.
+        date_str: Optional ISO date (YYYY-MM-DD). Enables holiday handling
+            for weekday-only peak schedules (E-TOU-D).
 
     Returns:
         (period, season) — e.g. ("peak", "winter"), ("off_peak", "summer")
@@ -59,9 +62,14 @@ def classify_tou_period(hour: int, month: int, day_of_week: int,
         if period not in tou_windows:
             continue
         window = tou_windows[period]
-        # E-TOU-D has weekdays_only peak
-        if window.get("weekdays_only", False) and day_of_week >= 5:
-            continue
+        # E-TOU-D has weekdays_only peak — weekends AND PG&E holidays are off-peak
+        if window.get("weekdays_only", False):
+            if day_of_week >= 5:
+                continue
+            if date_str is not None:
+                from src.rates.holidays import is_pge_holiday
+                if is_pge_holiday(date.fromisoformat(date_str)):
+                    continue
         if hour in window["hours"]:
             return period, season
 
