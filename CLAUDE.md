@@ -9,7 +9,8 @@ Helps PG&E residential solar+battery customers answer: "Am I on the right rate p
 ## Key Design Principles
 
 - **The rate engine is the product.** PG&E billing is extraordinarily complex: CCA vs bundled providers, 20+ PCIA vintage years, NEM 2.0 vs 3.0 export credits, base services charges by income tier, TOU periods varying by schedule. The server encodes all of this so users don't have to read tariff PDFs.
-- **Stateless Phase 1.** CSV data comes in via tool parameters (Claude reads uploaded files and passes structured data). No database, no auth, no stored credentials. Add persistence in Phase 2.
+- **Stateless analysis, opt-in persistence.** CSV data comes in via tool parameters. System configs and PG&E OAuth tokens persist in SQLite at `$DATA_DIR/configs.db` (mount a volume in production). Live integrations (Powerwall, Solcast, PG&E Share My Data) activate via env credentials and degrade to setup instructions when unconfigured.
+- **Auth:** `MCP_AUTH_TOKEN` enables bearer auth on the HTTP endpoint (`src/auth.py`). Never configure Tesla/PG&E credentials on a deployment without it.
 - **Domain logic separate from MCP layer.** All analysis lives in `src/` as importable Python modules. MCP tools in `server.py` are thin wrappers. This allows reuse in a future web app.
 
 ## Architecture
@@ -17,27 +18,26 @@ Helps PG&E residential solar+battery customers answer: "Am I on the right rate p
 ```
 pge-energy-mcp/
 ├── CLAUDE.md
-├── server.py                  # FastMCP server — tool definitions
-├── pyproject.toml
-├── Procfile                   # Railway deployment
+├── server.py                  # FastMCP server — 22 tool definitions
+├── pyproject.toml / requirements.txt
+├── Procfile                   # Railway: python server.py (MCP only)
 ├── src/
-│   ├── parsers/
-│   │   ├── green_button.py    # PG&E Green Button CSV parser
-│   │   └── tesla.py           # Tesla app export CSV parser
-│   ├── rates/
-│   │   ├── engine.py          # Rate lookup + cost calculation
-│   │   ├── tou.py             # TOU period classification
-│   │   └── nem.py             # NEM 2.0 / 3.0 credit calculation
-│   ├── analysis/
-│   │   ├── usage.py           # Usage profiling
-│   │   ├── compare.py         # Rate plan comparison
-│   │   └── simulator.py       # System expansion modeling
-│   └── data/
-│       └── system_config.py   # User system configuration model
+│   ├── auth.py                # Optional bearer-token ASGI middleware
+│   ├── parsers/               # green_button, billing, tesla, tesla_power
+│   ├── rates/                 # engine (+RateCache), tou, nem (ACC), holidays, baseline
+│   ├── analysis/              # compare, usage (+EV detection), simulator (+ROI),
+│   │                          # strategy, trueup, nem_compare, bill_validation
+│   ├── optimization/          # Pyomo battery optimizer (HiGHS/CBC/GLPK)
+│   ├── integrations/          # powerwall, solcast, tesla fleet, pge_share_my_data, espi
+│   ├── storage/               # SQLite config + OAuth token store
+│   └── data/                  # system_config model
 ├── config/
-│   ├── pge_rates.json         # PG&E delivery rates (unbundled)
-│   ├── cca_rates.json         # CCA provider generation rates
-│   └── pcia_vintages.json     # PCIA per-kWh by vintage year
+│   ├── pge_rates.json         # PG&E rates + NBC + baseline credit
+│   ├── cca_rates.json         # CCA generation rates (PCE loaded; others TBD)
+│   ├── pcia_vintages.json     # PCIA per-kWh by vintage year
+│   ├── baselines.json         # Baseline allowances by territory
+│   └── rate_history.json      # Historical rate periods
+├── web/                       # Local-only FastAPI UI (python server.py --web)
 └── tests/
 ```
 
@@ -156,7 +156,8 @@ Bundled PG&E: effective_rate = total_bundled_rate (no PCIA)
 
 - Exports earn full retail credit at applicable TOU rate
 - Credits accumulate monthly, settle at annual true-up (no cash back)
-- NBC ~$0.03-0.04/kWh cannot be offset by export credits
+- NBC (~$0.0345/kWh, config `pge_rates.json:nbc`) cannot be offset by
+  export credits — modeled as NEM2 export credit = retail − NBC
 - Switching rate plans mid-cycle triggers early true-up
 
 ### NEM 3.0 (reference)
@@ -181,22 +182,21 @@ From analysis of reference customer (Brisbane CA, ~7kW solar, 1 working PW2, 2 T
 
 6. **True-up IS the bill.** ~$2,000-2,100 in Dec-Jan cycle. Monthly charges $8-118. Other 11 months = interest-free borrowing.
 
-## MCP Tools
+## MCP Tools (22)
 
-### Phase 1
+**Ingestion:** parse_green_button, parse_billing_data, parse_tesla_export,
+parse_tesla_power, fetch_pge_data (Share My Data API)
+**Rates:** get_rates, extract_bill_details
+**Analysis:** compare_plans, usage_profile (incl. EV charging detection),
+simulate_system (incl. payback/ROI), seasonal_strategy, nem_projection,
+compare_nem_versions, validate_bill, optimize_battery, solar_forecast
+**Config:** save/get/update/list/delete_system_config
+**Powerwall (live, FleetAPI):** powerwall_live, powerwall_details,
+set_powerwall_mode/reserve/grid_charging/grid_export
+**PG&E OAuth:** connect_pge, complete_pge_connection
 
-1. **parse_green_button** — CSV → structured hourly intervals with TOU classification
-2. **parse_tesla_export** — Tesla CSV → normalized monthly kWh (handle unit inconsistencies)
-3. **get_rates** — Lookup effective rates for schedule + provider + vintage + tier
-4. **compare_plans** — Annual cost across multiple plan configs with TOU-period savings breakdown
-5. **usage_profile** — Self-consumption, peak exposure, seasonal patterns, baseload, worst days
-6. **simulate_system** — Expansion modeler: add arrays (with clipping), batteries, dispatch strategies
-
-### Phase 2
-- powerwall_status (pypowerwall FleetAPI), solar_forecast (Solcast), optimize_battery (Pyomo+CBC), seasonal_strategy
-
-### Phase 3
-- configure_system (per-user storage), nem_projection, PG&E Share My Data API
+Remaining roadmap: per-user auth scoping, SVCE/MCE/SJCE/EBCE rates,
+inland-zone ACC tables, web app productization.
 
 ## Green Button CSV Format
 
@@ -257,6 +257,10 @@ FastMCP, pandas, numpy, uvicorn, Python 3.11+. Deploy on Railway (Streamable HTT
 - E-TOU-C rates TODO — fetch from tariff sheet.
 - PCIA vintage is permanent (set when customer joined CCA).
 - PCE dropped generation rates significantly Feb 2026 — watch for further changes.
+- NBC per-kWh and baseline allowances live in config — update with tariff changes.
+- `rates_meta` in every lookup carries last_updated/stale so Claude can warn users.
+- E-TOU-C baseline credit: $0.08/kWh on monthly net usage up to territory allowance (config/baselines.json — territory T estimated, verify).
+- E-TOU-D peak skips PG&E holidays (src/rates/holidays.py).
 
 ## Proprious Labs
 
