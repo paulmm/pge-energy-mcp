@@ -38,7 +38,10 @@ TYPICAL FLOW
    E-TOU-D), provider (PG&E bundled vs CCA like PCE/MCE/SVCE), NEM version
    (NEM 2.0 or 3.0), PCIA vintage year, income tier. Pass to extract_bill_details
    to validate against the rate engine.
-5. Run analysis tools: compare_plans, usage_profile, nem_projection, etc.
+5. Trust check: run validate_bill with the bill's line items and billing
+   period. If match_quality is "good", say so — it makes every later
+   number credible. If "poor", investigate before drawing conclusions.
+6. Run analysis tools: compare_plans, usage_profile, nem_projection, etc.
 
 KEY DOMAIN RULES
 - Effective rate for CCA customer = pge_delivery + cca_generation + pcia_vintage.
@@ -499,6 +502,51 @@ async def compare_nem_versions(
     """
     from src.analysis.nem_compare import compare_nem_versions as compute
     return compute(interval_data, plan)
+
+
+@mcp.tool(tags={"analysis", "billing", "rates"}, annotations={"title": "Validate against actual bill", "readOnlyHint": True, "openWorldHint": False})
+async def validate_bill(
+    interval_data: list[dict],
+    plan: dict,
+    period_start: str,
+    period_end: str,
+    actual_charges: dict,
+    nem_version: str = "NEM2",
+) -> dict:
+    """
+    Recompute a billing period from interval data and compare with the actual bill.
+
+    This is the trust check: if the engine reproduces the user's real bill
+    within a few percent, every comparison and projection built on these
+    rates is credible. Run it once after parsing a bill.
+
+    Reading actual_charges off the bill:
+    - "pge_delivery": the Net Usage lines in the PG&E NEM section (sum of
+      peak/part-peak/off-peak amounts)
+    - "generation": Total CCA charges (e.g. "Total PCE Charges") for CCA
+      customers, or the generation portion for bundled
+    - "pcia": the "Power Charge Indifference Adjustment" line
+    - "nbc_on_exports": State Mandated NBC line PLUS the (negative) "NBC Net
+      Usage Adjustment" line — their sum
+    - "base_services_charge": the Base Services Charge line
+    - "total": monthly NEM charges + CCA charges + BSC
+    Omit (or pass null for) lines you can't find — only provided keys are compared.
+
+    Args:
+        interval_data: Hourly records from parse_green_button
+        plan: {schedule, provider, vintage_year, income_tier}
+        period_start: Billing period start date (YYYY-MM-DD, from the bill)
+        period_end: Billing period end date (YYYY-MM-DD)
+        actual_charges: Dollar amounts read off the bill (see above)
+        nem_version: "NEM2" or "NEM3"
+
+    Returns:
+        Dict with expected components, per-component deltas vs actuals,
+        match_quality (good/fair/poor), and notes naming the biggest drift.
+    """
+    from src.analysis.bill_validation import validate_bill as compute
+    return compute(interval_data, plan, period_start, period_end,
+                   actual_charges, nem_version)
 
 
 def _load_config(config_id: str) -> dict:
