@@ -32,8 +32,7 @@ async def index(request: Request):
     sid, data = _get_or_create_session(request)
     has_data = data is not None and "parsed" in data
     summary = data.get("summary") if has_data else None
-    response = templates.TemplateResponse("index.html", {
-        "request": request,
+    response = templates.TemplateResponse(request, "index.html", {
         "has_data": has_data,
         "summary": summary,
     })
@@ -53,8 +52,7 @@ async def upload(request: Request, file: UploadFile = File(...)):
     set_session_data(sid, "summary", parsed["summary"])
     set_session_data(sid, "metadata", parsed["metadata"])
 
-    response = templates.TemplateResponse("partials/upload_summary.html", {
-        "request": request,
+    response = templates.TemplateResponse(request, "partials/upload_summary.html", {
         "summary": parsed["summary"],
         "metadata": parsed["metadata"],
     })

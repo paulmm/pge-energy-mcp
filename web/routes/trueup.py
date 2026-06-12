@@ -25,8 +25,7 @@ async def trueup_page(request: Request):
     sid = request.cookies.get(COOKIE_NAME)
     data = get_session(sid) if sid else None
     has_data = data is not None and "parsed" in data
-    return templates.TemplateResponse("trueup.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "trueup.html", {
         "has_data": has_data,
         "months": [(i, MONTH_NAMES[i]) for i in range(1, 13)],
     })
@@ -60,8 +59,7 @@ async def run_trueup(
 
     results = project_trueup(intervals, plan, nem_version, true_up_month)
 
-    return templates.TemplateResponse("partials/trueup_results.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "partials/trueup_results.html", {
         "results": results,
         "month_names": MONTH_NAMES,
     })

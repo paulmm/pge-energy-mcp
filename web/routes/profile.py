@@ -20,8 +20,7 @@ async def profile_page(request: Request):
     sid = request.cookies.get(COOKIE_NAME)
     data = get_session(sid) if sid else None
     has_data = data is not None and "parsed" in data
-    return templates.TemplateResponse("profile.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "profile.html", {
         "has_data": has_data,
     })
 
@@ -42,7 +41,6 @@ async def run_profile(
     intervals = data["parsed"]["intervals"]
     results = profile(intervals, schedule=schedule)
 
-    return templates.TemplateResponse("partials/profile_results.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "partials/profile_results.html", {
         "results": results,
     })

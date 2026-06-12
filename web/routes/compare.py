@@ -32,8 +32,7 @@ async def compare_page(request: Request):
     sid = request.cookies.get(COOKIE_NAME)
     data = get_session(sid) if sid else None
     has_data = data is not None and "parsed" in data
-    return templates.TemplateResponse("compare.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "compare.html", {
         "has_data": has_data,
         "plans": AVAILABLE_PLANS,
         "providers": PROVIDERS,
@@ -72,7 +71,6 @@ async def run_compare(
 
     results = compare(intervals, plans, nem_version)
 
-    return templates.TemplateResponse("partials/compare_results.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "partials/compare_results.html", {
         "results": results,
     })
