@@ -14,6 +14,7 @@ import base64
 import json
 from pathlib import Path
 
+from src.auth import BearerAuthMiddleware
 from src.storage.config_store import get_store
 from src.data.system_config import SystemConfig
 
@@ -935,7 +936,8 @@ async def icon_svg(request):
 
 
 # ASGI app for deployment (Railway, uvicorn, etc.)
-app = mcp.http_app()
+# Wrapped in optional bearer auth — set MCP_AUTH_TOKEN to enforce.
+app = BearerAuthMiddleware(mcp.http_app())
 
 
 if __name__ == "__main__":
@@ -951,5 +953,10 @@ if __name__ == "__main__":
         mcp.run(transport="stdio")
     else:
         import os
+        import uvicorn
         port = int(os.environ.get("PORT", 8000))
-        mcp.run(transport="streamable-http", host="0.0.0.0", port=port)
+        if not os.environ.get("MCP_AUTH_TOKEN"):
+            print("WARNING: MCP_AUTH_TOKEN not set — the HTTP endpoint is "
+                  "unauthenticated. Do not configure Tesla/PG&E credentials "
+                  "on an open deployment.")
+        uvicorn.run(app, host="0.0.0.0", port=port)
