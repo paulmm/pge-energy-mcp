@@ -105,8 +105,28 @@ class TestRateErrors:
 
     def test_provider_missing_schedule(self):
         """SVCE has no rates defined yet."""
-        with pytest.raises(ValueError, match="no rates"):
+        with pytest.raises(ValueError, match="not loaded"):
             lookup_rates("EV2-A", "SVCE", 2017, 3)
+
+
+# ── Provider coverage ─────────────────────────────────────────────────
+
+
+class TestProviderCoverage:
+    def test_providers_with_rates(self):
+        from src.rates.engine import providers_with_rates
+        supported = providers_with_rates("EV2-A")
+        assert "PCE" in supported
+        assert "PGE_BUNDLED" in supported
+        assert "SVCE" not in supported
+
+    def test_unloaded_cca_error_is_actionable(self):
+        with pytest.raises(ValueError) as exc:
+            lookup_rates("EV2-A", "SVCE", 2017, 3)
+        msg = str(exc.value)
+        assert "not loaded" in msg
+        assert "PCE" in msg            # tells the user what IS supported
+        assert "svcleanenergy.org" in msg  # tells the operator where to get rates
 
 
 # ── NEM 3.0 Avoided Cost Calculator ──────────────────────────────────

@@ -54,7 +54,10 @@ KEY DOMAIN RULES
 SUPPORTED RATES (verified March 2026 tariff)
 - EV2-A, E-ELEC: peak 4-9PM every day, partial-peak 3-4PM & 9PM-midnight
 - E-TOU-C: peak 4-9PM every day (two-period, baseline-tiered)
-- E-TOU-D: peak 5-8PM weekdays only
+- E-TOU-D: peak 5-8PM weekdays only (PG&E holidays count as off-peak)
+- CCA generation rates loaded: PCE (Peninsula Clean Energy). SVCE, MCE,
+  SJCE, EBCE are recognized but rates are pending — tools return a clear
+  error naming the supported providers.
 
 POWERWALL CONTROL
 The set_powerwall_* tools change real Tesla battery state via FleetAPI.
@@ -191,7 +194,8 @@ async def extract_bill_details(
 
     Args:
         schedule: Rate schedule from bill (EV2-A, E-ELEC, E-TOU-C, E-TOU-D)
-        provider: PGE_BUNDLED, PCE, SVCE, MCE, SJCE, or EBCE
+        provider: PGE_BUNDLED or PCE (full rates loaded). SVCE/MCE/SJCE/EBCE
+                  are recognized but rates are pending — returns a clear error.
         vintage_year: PCIA vintage year (CCA customers only, None for bundled)
         income_tier: 1 (CARE), 2 (FERA), or 3 (standard)
         nem_version: NEM2 or NEM3
@@ -275,16 +279,21 @@ async def get_rates(
     
     Args:
         schedule: Rate schedule — "EV2-A", "E-ELEC", "E-TOU-C", or "E-TOU-D"
-        provider: Electricity provider — "PGE_BUNDLED", "PCE", "SVCE", "MCE", "SJCE", "EBCE"
+        provider: Electricity provider — "PGE_BUNDLED" or "PCE" (full rates
+                  loaded). SVCE/MCE/SJCE/EBCE are recognized but their rates
+                  are not loaded yet — the tool returns an actionable error.
         vintage_year: PCIA vintage year (year customer joined CCA). Ignored for PGE_BUNDLED.
         income_tier: 1 (CARE), 2 (FERA), or 3 (standard) for base services charge.
-        
+
     Returns:
         Dict with effective $/kWh rates by season and TOU period, base charge,
         and component breakdown (delivery, generation, PCIA)
     """
     from src.rates.engine import lookup_rates
-    return lookup_rates(schedule, provider, vintage_year, income_tier)
+    try:
+        return lookup_rates(schedule, provider, vintage_year, income_tier)
+    except ValueError as e:
+        return {"error": str(e)}
 
 
 @mcp.tool(tags={"analysis", "rates"}, annotations={"title": "Compare rate plans", "readOnlyHint": True, "openWorldHint": False})

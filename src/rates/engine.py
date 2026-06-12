@@ -68,8 +68,15 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
         if not provider_data:
             raise ValueError(f"Unknown provider: {provider}")
         cca_sched = provider_data["schedules"].get(schedule)
-        if not cca_sched:
-            raise ValueError(f"Provider {provider} has no rates for schedule {schedule}")
+        if not isinstance(cca_sched, dict) or not (
+                "summer" in cca_sched or "winter" in cca_sched):
+            supported = providers_with_rates(schedule)
+            website = provider_data.get("website", "the provider's rate page")
+            raise ValueError(
+                f"{provider} ({provider_data.get('name', provider)}) rates are "
+                f"not loaded yet for {schedule}. Providers with rates for "
+                f"{schedule}: {', '.join(supported)}. {provider} rates can be "
+                f"added to config/cca_rates.json from {website}.")
         cca_gen = _deep_copy_rates(cca_sched)
 
     # Apply historical overrides if date provided
@@ -199,6 +206,19 @@ def _apply_history(date: str, schedule: str, provider: str,
                     for p, rate in override[season].items():
                         if not p.startswith("_") and isinstance(rate, (int, float)):
                             cca_gen.setdefault(season, {})[p] = rate
+
+
+def providers_with_rates(schedule: str) -> list[str]:
+    """Providers that have real rate data loaded for a schedule."""
+    cca = _load_json("cca_rates.json")["providers"]
+    supported = ["PGE_BUNDLED"]
+    for code, data in cca.items():
+        if code == "PGE_BUNDLED":
+            continue
+        sched = data.get("schedules", {}).get(schedule)
+        if isinstance(sched, dict) and ("summer" in sched or "winter" in sched):
+            supported.append(code)
+    return supported
 
 
 def _deep_copy_rates(d: dict) -> dict:
