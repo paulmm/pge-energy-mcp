@@ -343,7 +343,8 @@ async def usage_profile(interval_data: list[dict], config_id: str = None) -> dic
     Returns:
         Dict with: self_consumption_ratio, grid_dependency_by_season,
         peak_hour_exposure_pct, overnight_baseload_kwh, weekday_vs_weekend,
-        monthly_trends, top_import_days
+        monthly_trends, top_import_days, and ev_charging (detected sessions,
+        kWh, timing vs off-peak window, recommendations)
     """
     from src.analysis.usage import profile
     return profile(interval_data)
