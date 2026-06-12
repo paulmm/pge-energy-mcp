@@ -52,6 +52,11 @@ def lookup_rates(schedule: str, provider: str = "PGE_BUNDLED",
     sched = pge_rates["schedules"][schedule]
     is_bundled = provider == "PGE_BUNDLED"
 
+    if income_tier not in (1, 2, 3):
+        raise ValueError(
+            f"income_tier must be 1 (CARE), 2 (FERA), or 3 (standard); "
+            f"got {income_tier!r}")
+
     # Base services charge
     bsc_map = dict(sched.get("base_services_charge_daily", {}))
     tier_key = {1: "tier_1_care", 2: "tier_2_fera", 3: "tier_3_standard"}[income_tier]

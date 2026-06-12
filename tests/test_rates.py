@@ -94,6 +94,12 @@ class TestBSC:
 # ── Rate engine: error handling ───────────────────────────────────────
 
 
+class TestInputValidation:
+    def test_bad_income_tier_raises_value_error(self):
+        with pytest.raises(ValueError, match="income_tier"):
+            lookup_rates("EV2-A", "PCE", 2016, income_tier=4)
+
+
 class TestRateErrors:
     def test_unknown_schedule(self):
         with pytest.raises(ValueError, match="Unknown schedule"):

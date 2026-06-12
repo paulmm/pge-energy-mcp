@@ -334,3 +334,18 @@ class TestSimulationScenarios:
         assert "green_button_baseline" in r
         assert "tou_breakdown" in r["proposed"]
         assert "monthly_breakdown" in r["proposed"]
+
+
+# ── Array capacity fallback ──────────────────────────────────────────
+
+
+def test_string_array_ac_watts_fallback():
+    """When ac_watts is omitted on a string array, fall back to the string
+    inverter's total watts — NOT inverter_watts x panels."""
+    with_ac = {"panels": 12, "panel_watts": 315, "type": "string",
+               "inverter_watts_ac": 4000, "ac_watts": 4000}
+    without_ac = {"panels": 12, "panel_watts": 315, "type": "string",
+                  "inverter_watts_ac": 4000}
+    for hour in (10, 12, 14):
+        assert estimate_array_hourly_kwh(without_ac, 6, hour) == \
+            pytest.approx(estimate_array_hourly_kwh(with_ac, 6, hour))

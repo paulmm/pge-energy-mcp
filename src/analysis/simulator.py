@@ -75,7 +75,9 @@ def estimate_array_hourly_kwh(array: dict, month: int, hour: int,
         instant_ac_kw = min(total_dc_kw, inv_w / 1000)
 
     psh = psh_by_month.get(_MONTH_NAMES[month - 1], 4.0)
-    ac_cap_kw = array.get("ac_watts", inv_w * panels) / 1000
+    # micro: inverter_watts_ac is per panel; string: it's the whole inverter
+    default_ac_watts = inv_w * panels if inv_type == "micro" else inv_w
+    ac_cap_kw = array.get("ac_watts", default_ac_watts) / 1000
     ideal_daily = ac_cap_kw * psh * DERATING
     ideal_hourly = ideal_daily * (irradiance / _CURVE_TOTAL) if _CURVE_TOTAL else 0
 

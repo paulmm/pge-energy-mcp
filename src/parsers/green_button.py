@@ -53,13 +53,17 @@ def parse(csv_content: str) -> dict:
     total_export = 0.0
     total_cost = 0.0
 
-    for row in reader:
-        dt = date.fromisoformat(row["DATE"])
-        hour = int(row["START TIME"].split(":")[0])
-
-        import_kwh = _clean_number(row["IMPORT (kWh)"])
-        export_kwh = _clean_number(row["EXPORT (kWh)"])
-        cost = _clean_number(row["COST"])
+    skipped = []
+    for row_num, row in enumerate(reader, start=1):
+        try:
+            dt = date.fromisoformat(row["DATE"])
+            hour = int(row["START TIME"].split(":")[0])
+            import_kwh = _clean_number(row["IMPORT (kWh)"])
+            export_kwh = _clean_number(row["EXPORT (kWh)"])
+            cost = _clean_number(row["COST"])
+        except (ValueError, KeyError, TypeError, AttributeError) as e:
+            skipped.append({"row": row_num, "error": f"{type(e).__name__}: {e}"})
+            continue
 
         intervals.append({
             "date": row["DATE"],
@@ -125,6 +129,8 @@ def parse(csv_content: str) -> dict:
             "total_export_kwh": round(total_export, 2),
             "total_cost": round(total_cost, 2),
             "num_intervals": len(intervals),
+            "skipped_rows": len(skipped),
+            "skipped_samples": skipped[:5],
             "date_range": date_range,
         },
         "next_steps": next_steps,

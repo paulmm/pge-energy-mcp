@@ -180,3 +180,30 @@ class TestTeslaHeaderParsing:
         kwh_count = sum(1 for _, (_, u) in mapping.items() if u == "kWh")
         assert mwh_count == 2
         assert kwh_count == 2
+
+
+# ── Malformed row handling ───────────────────────────────────────────
+
+
+def test_green_button_skips_malformed_rows():
+    csv_content = (
+        "Name,TEST USER\n"
+        "TYPE,DATE,START TIME,END TIME,IMPORT (kWh),EXPORT (kWh),COST,NOTES\n"
+        "Electric usage,2025-03-20,00:00,00:59,2.94,0.00,$1.02\n"
+        "Electric usage,NOT-A-DATE,01:00,01:59,1.00,0.00,$0.50\n"
+        "Electric usage,2025-03-20,02:00,02:59,1.50,0.00,$0.75\n"
+    )
+    result = gb_parse(csv_content)
+    assert result["summary"]["num_intervals"] == 2
+    assert result["summary"]["skipped_rows"] == 1
+    assert result["summary"]["skipped_samples"][0]["row"] == 2
+
+
+def test_green_button_clean_csv_reports_zero_skipped():
+    csv_content = (
+        "TYPE,DATE,START TIME,END TIME,IMPORT (kWh),EXPORT (kWh),COST,NOTES\n"
+        "Electric usage,2025-03-20,00:00,00:59,2.94,0.00,$1.02\n"
+    )
+    result = gb_parse(csv_content)
+    assert result["summary"]["skipped_rows"] == 0
+    assert result["summary"]["skipped_samples"] == []
