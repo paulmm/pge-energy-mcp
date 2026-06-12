@@ -47,11 +47,11 @@ def calculate_export_credit(export_kwh: float, rate_per_kwh: float,
         raise ValueError(f"Unknown NEM version: {nem_version}")
 
 
-def get_acc_rate(hour: int = None, month: int = None) -> float:
+def get_acc_rate(hour: int = None, month: int = None,
+                 climate_zone: int = 3) -> float:
     """
     Look up the Avoided Cost Calculator rate for a given hour and month.
 
-    Based on CPUC ACC values for PG&E territory (Climate Zone 3).
     Values represent the grid's avoided cost — what it would have cost
     to generate/deliver that energy from the cheapest available source.
 
@@ -61,22 +61,42 @@ def get_acc_rate(hour: int = None, month: int = None) -> float:
     Args:
         hour: 0-23 (None defaults to average)
         month: 1-12 (None defaults to average)
+        climate_zone: CEC climate zone. Only zone 3 (coastal Bay Area) has
+            data today; other PG&E zones (e.g. 11-13 inland) raise until
+            their tables are loaded. Zone 3 values overstate export value
+            for inland customers — do not silently substitute.
 
     Returns:
         ACC rate in $/kWh
     """
+    if climate_zone not in _ACC_TABLES:
+        raise ValueError(
+            f"No ACC data loaded for climate zone {climate_zone}. "
+            f"Available zones: {sorted(_ACC_TABLES)}. PG&E spans several "
+            f"CEC climate zones; zone 3 (coastal Bay Area) is loaded.")
+    table = _ACC_TABLES[climate_zone]
+
     if hour is None or month is None:
-        return _ACC_ANNUAL_AVERAGE
+        return round(sum(v for row in table for v in row) / (12 * 24), 4)
 
-    return _ACC_TABLE[month - 1][hour]
+    if not isinstance(month, int) or not 1 <= month <= 12:
+        raise ValueError(f"month must be 1-12, got {month!r}")
+    if not isinstance(hour, int) or not 0 <= hour <= 23:
+        raise ValueError(f"hour must be 0-23, got {hour!r}")
+
+    return table[month - 1][hour]
 
 
-def get_acc_summary() -> dict:
+def get_acc_summary(climate_zone: int = 3) -> dict:
     """Return summary statistics for the ACC table."""
-    all_values = [v for row in _ACC_TABLE for v in row]
-    summer_peak = [_ACC_TABLE[m - 1][h]
+    if climate_zone not in _ACC_TABLES:
+        raise ValueError(f"No ACC data loaded for climate zone {climate_zone}. "
+                         f"Available zones: {sorted(_ACC_TABLES)}.")
+    table = _ACC_TABLES[climate_zone]
+    all_values = [v for row in table for v in row]
+    summer_peak = [table[m - 1][h]
                    for m in [6, 7, 8, 9] for h in range(16, 21)]
-    winter_offpeak = [_ACC_TABLE[m - 1][h]
+    winter_offpeak = [table[m - 1][h]
                       for m in [11, 12, 1, 2] for h in range(0, 15)]
 
     return {
@@ -85,6 +105,7 @@ def get_acc_summary() -> dict:
         "max": round(max(all_values), 4),
         "summer_peak_avg": round(sum(summer_peak) / len(summer_peak), 4),
         "winter_offpeak_avg": round(sum(winter_offpeak) / len(winter_offpeak), 4),
+        "climate_zone": climate_zone,
         "note": "PG&E Climate Zone 3 (Bay Area), based on CPUC ACC 2025-2026",
     }
 
@@ -132,7 +153,6 @@ _ACC_TABLE = [
     [0.041, 0.039, 0.037, 0.036, 0.036, 0.038, 0.043, 0.052, 0.056, 0.058, 0.055, 0.050, 0.048, 0.047, 0.050, 0.062, 0.105, 0.135, 0.145, 0.128, 0.102, 0.072, 0.056, 0.046],
 ]
 
-# Annual average (weighted equally across all hours/months)
-_ACC_ANNUAL_AVERAGE = round(
-    sum(v for row in _ACC_TABLE for v in row) / (12 * 24), 4
-)
+# Keyed by CEC climate zone. Only zone 3 loaded; add inland zones (11-13)
+# from CPUC ACC workbooks when needed.
+_ACC_TABLES = {3: _ACC_TABLE}

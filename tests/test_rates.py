@@ -168,6 +168,35 @@ class TestNEM3ACC:
                 assert rate > 0, f"ACC rate at month={month} hour={hour} is {rate}"
 
 
+# ── ACC table: zones and bounds ───────────────────────────────────────
+
+
+class TestACC:
+    def test_bad_month_raises(self):
+        from src.rates.nem import get_acc_rate
+        with pytest.raises(ValueError, match="month"):
+            get_acc_rate(hour=12, month=0)
+        with pytest.raises(ValueError, match="month"):
+            get_acc_rate(hour=12, month=13)
+
+    def test_bad_hour_raises(self):
+        from src.rates.nem import get_acc_rate
+        with pytest.raises(ValueError, match="hour"):
+            get_acc_rate(hour=24, month=6)
+        with pytest.raises(ValueError, match="hour"):
+            get_acc_rate(hour=-1, month=6)
+
+    def test_unknown_zone_raises_with_available_zones(self):
+        from src.rates.nem import get_acc_rate
+        with pytest.raises(ValueError, match="zone"):
+            get_acc_rate(hour=12, month=6, climate_zone=12)
+
+    def test_zone_3_default_unchanged(self):
+        from src.rates.nem import get_acc_rate
+        assert get_acc_rate(hour=18, month=7) == pytest.approx(0.280)
+        assert get_acc_rate(hour=18, month=7, climate_zone=3) == pytest.approx(0.280)
+
+
 # ── TOU classification ───────────────────────────────────────────────
 
 
