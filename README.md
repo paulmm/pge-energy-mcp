@@ -295,13 +295,41 @@ brew install cbc          # macOS
 apt-get install coinor-cbc  # Linux
 ```
 
+### Security
+
+The MCP endpoint supports optional bearer-token auth. Set `MCP_AUTH_TOKEN`
+to any long random string (e.g. `openssl rand -hex 32`) and every HTTP
+request must send `Authorization: Bearer <token>`. When unset, the endpoint
+is open.
+
+**Rules of thumb:**
+
+- **Never set `TESLA_FLEET_TOKEN`, `PGE_CLIENT_ID`/`PGE_CLIENT_SECRET`, or
+  `SOLCAST_API_KEY` on a deployment without `MCP_AUTH_TOKEN`.** Those
+  credentials are server-global — on an open endpoint, anyone who connects
+  can control your Powerwall and read your usage data.
+- claude.ai custom connectors cannot send custom headers, so an
+  authenticated deployment works with Claude Code / Claude Desktop
+  (`claude mcp add --transport http pge-energy <url> --header
+  "Authorization: Bearer <token>"`) but not claude.ai. For claude.ai, run
+  a separate open deployment with **no credentials configured** — the
+  analysis tools (parsers, rates, comparisons) are safe without auth
+  because they hold no secrets.
+- For live Powerwall control from Claude Desktop, prefer running locally
+  with `python server.py --stdio` and credentials in your local env.
+- Stored configs and OAuth tokens live in `$DATA_DIR/configs.db`
+  (default `./data`). On Railway the filesystem is **ephemeral** — mount a
+  volume and point `DATA_DIR` at it or stored configs vanish on redeploy.
+  Tokens are stored unencrypted; treat the volume as sensitive.
+
 ### Environment Variables
 
 All optional — tools return helpful setup instructions when credentials are missing.
 
 | Variable | Purpose |
 |----------|---------|
-| `DATA_DIR` | SQLite storage directory (default: `./data`) |
+| `MCP_AUTH_TOKEN` | Optional bearer token for the HTTP endpoint. Unset = open access. |
+| `DATA_DIR` | SQLite storage directory (default: `./data`). Mount a volume in production. |
 | `TESLA_FLEET_TOKEN` | Tesla FleetAPI access token |
 | `SOLCAST_API_KEY` | Solcast API key |
 | `PGE_CLIENT_ID` | PG&E Share My Data OAuth client ID |
