@@ -290,7 +290,7 @@ Encodes the full complexity of PG&E billing so you don't have to read tariff PDF
 # Install with dev dependencies
 pip install -e ".[dev]"
 
-# Run tests (234 passing)
+# Run tests (298 passing)
 pytest
 
 # Battery optimizer solver: highspy (HiGHS) installs automatically with

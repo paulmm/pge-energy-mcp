@@ -18,7 +18,7 @@ Helps PG&E residential solar+battery customers answer: "Am I on the right rate p
 ```
 pge-energy-mcp/
 ├── CLAUDE.md
-├── server.py                  # FastMCP server — 22 tool definitions
+├── server.py                  # FastMCP server — 29 tool definitions
 ├── pyproject.toml / requirements.txt
 ├── Procfile                   # Railway: python server.py (MCP only)
 ├── src/
@@ -182,7 +182,7 @@ From analysis of reference customer (Brisbane CA, ~7kW solar, 1 working PW2, 2 T
 
 6. **True-up IS the bill.** ~$2,000-2,100 in Dec-Jan cycle. Monthly charges $8-118. Other 11 months = interest-free borrowing.
 
-## MCP Tools (22)
+## MCP Tools (29)
 
 **Ingestion:** parse_green_button, parse_billing_data, parse_tesla_export,
 parse_tesla_power, fetch_pge_data (Share My Data API)
