@@ -204,6 +204,9 @@ python server.py --web
 # Open http://localhost:8001
 ```
 
+> The web UI is local-only by design — it has no authentication, so it is
+> not mounted on the deployed MCP server.
+
 </details>
 
 <details>

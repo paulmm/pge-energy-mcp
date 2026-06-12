@@ -981,21 +981,6 @@ async def fetch_pge_data(config_id: str, start_date: str, end_date: str) -> dict
     return fetch_usage_data(access_token, subscription_id, start_date, end_date)
 
 
-def create_combined_app():
-    """Create a combined ASGI app with both the MCP server and web interface.
-
-    The web app is mounted at /web, and the MCP server remains at the root.
-    """
-    from fastapi import FastAPI
-    from web.app import create_web_app
-
-    root = FastAPI(title="PG&E Energy MCP + Web")
-    web_app = create_web_app()
-    root.mount("/web", web_app)
-
-    return root
-
-
 @mcp.custom_route("/favicon.ico", methods=["GET"])
 async def favicon(request):
     from starlette.responses import Response
